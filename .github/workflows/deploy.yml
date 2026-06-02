@@ -24,7 +24,7 @@ jobs:
     - name: Generate Version File
       run: |
         COMMIT_COUNT=$(git rev-list --count HEAD)
-        echo "1.$COMMIT_COUNT" > version.txt
+        printf "1.%%03d" $COMMIT_COUNT > version.txt
 
     - name: Google Auth
       id: auth

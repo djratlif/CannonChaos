@@ -9,9 +9,10 @@ def get_version():
             return f.read().strip()
     try:
         import subprocess
-        return "1." + subprocess.check_output(["git", "rev-list", "--count", "HEAD"]).decode().strip()
+        commit_count = int(subprocess.check_output(["git", "rev-list", "--count", "HEAD"]).decode().strip())
+        return f"1.{commit_count:03d}"
     except Exception:
-        return "1.0"
+        return "1.000"
 
 @app.route("/")
 def index():
