@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cannon Chaos</title>
+    <!-- Use Google Fonts for 8-bit style -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="game-container">
+        <header>
+            <h1>Cannon Chaos</h1>
+        </header>
+
+        <div class="hud">
+            <div class="player-info" id="player-hud">
+                <p>Player 1</p>
+                <p>HP: <span id="player-hp">100</span></p>
+            </div>
+            
+            <div class="game-info">
+                <p id="turn-indicator">Player's Turn</p>
+                <div class="controls-info">
+                    <p>Angle: <span id="angle-display">45</span>&deg;</p>
+                    <p>Power: <span id="power-display">0</span>%</p>
+                </div>
+            </div>
+
+            <div class="player-info" id="cpu-hud">
+                <p>Computer</p>
+                <p>HP: <span id="cpu-hp">100</span></p>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas" width="800" height="500"></canvas>
+        
+        <div class="instructions">
+            <p>Controls:</p>
+            <p>[UP] / [DOWN] Arrows to change Angle</p>
+            <p>Hold [SPACE] to increase Power, Release to Fire!</p>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='game.js') }}"></script>
+</body>
+</html>

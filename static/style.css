@@ -1,0 +1,109 @@
+:root {
+    --bg-color: #0b1d28;
+    --text-color: #f4f4f4;
+    --primary-color: #ffcc00;
+    --player-color: #3b82f6;
+    --cpu-color: #ef4444;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'Press Start 2P', cursive; /* 8-bit font */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #112233;
+    border: 4px solid #fff;
+    padding: 20px;
+    box-shadow: 10px 10px 0px #000;
+}
+
+header h1 {
+    color: var(--primary-color);
+    font-size: 24px;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 0px #000;
+    text-transform: uppercase;
+}
+
+.hud {
+    display: flex;
+    justify-content: space-between;
+    width: 800px;
+    margin-bottom: 10px;
+    font-size: 12px;
+}
+
+.player-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: #223344;
+    padding: 10px;
+    border: 2px solid #fff;
+    width: 200px;
+}
+
+#player-hud {
+    color: var(--player-color);
+    border-color: var(--player-color);
+}
+
+#cpu-hud {
+    color: var(--cpu-color);
+    border-color: var(--cpu-color);
+    text-align: right;
+}
+
+.game-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+#turn-indicator {
+    font-size: 14px;
+    color: var(--primary-color);
+    animation: blink 1.5s infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.controls-info {
+    display: flex;
+    gap: 20px;
+    color: #00ffcc;
+}
+
+canvas {
+    background-color: #87CEEB; /* Sky blue */
+    border: 4px solid #fff;
+    image-rendering: pixelated; /* Ensures the canvas looks blocky when scaled if needed */
+}
+
+.instructions {
+    margin-top: 15px;
+    font-size: 10px;
+    color: #aaa;
+    text-align: center;
+    line-height: 1.5;
+}
