@@ -6,10 +6,10 @@ on:
       - main
 
 env:
-  PROJECT_ID: streamlitexample-495201
+  PROJECT_ID: cannon-chaos-5638
   SERVICE: cannon-chaos
   REGION: us-central1
-  IMAGE: us-central1-docker.pkg.dev/streamlitexample-495201/cloud-run-source-deploy/cannon-chaos
+  IMAGE: us-central1-docker.pkg.dev/cannon-chaos-5638/cloud-run-source-deploy/cannon-chaos
 
 jobs:
   deploy:
