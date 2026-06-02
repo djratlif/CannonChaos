@@ -10,31 +10,48 @@
 </head>
 <body>
     <div class="game-container">
-        <header>
-            <h1>Cannon Chaos <span style="font-size: 10px; color: #aaa; vertical-align: middle; margin-left: 10px;">(Build {{ build_version }})</span></h1>
+        <header style="text-align: center; margin-bottom: 20px;">
+            <h1 style="margin-bottom: 5px;">Cannon Chaos</h1>
+            <p style="font-size: 10px; color: #aaa; font-family: 'Press Start 2P', cursive;">(Build {{ build_version }})</p>
         </header>
 
         <div class="hud">
             <div class="player-info" id="player-hud">
                 <p>Player 1</p>
                 <p>HP: <span id="player-hp">100</span></p>
+                <div class="hp-bar-container"><div class="hp-bar" id="player-hp-bar"></div></div>
             </div>
             
             <div class="game-info">
                 <p id="turn-indicator">Player's Turn</p>
                 <div class="controls-info">
-                    <p>Angle: <span id="angle-display">45</span>&deg;</p>
-                    <p>Power: <span id="power-display">0</span>%</p>
+                    <div class="control-item" style="display: flex; align-items: center; gap: 8px;">
+                        <svg id="angle-svg" width="24" height="24" viewBox="0 0 24 24" style="vertical-align: middle;">
+                            <path d="M 3 18 A 9 9 0 0 1 21 18" fill="none" stroke="#666" stroke-width="2" />
+                            <line id="angle-needle" x1="12" y1="18" x2="18.36" y2="11.64" stroke="var(--primary-color)" stroke-width="2.5" stroke-linecap="round" />
+                        </svg>
+                        <p>Angle: <span id="angle-display">45</span>&deg;</p>
+                    </div>
+                    <div class="control-item" style="display: flex; align-items: center; gap: 8px;">
+                        <svg id="power-svg" width="16" height="24" viewBox="0 0 16 24" style="vertical-align: middle;">
+                            <!-- Thermometer outline -->
+                            <rect x="5" y="2" width="6" height="20" rx="3" fill="#334455" stroke="#666" stroke-width="1" />
+                            <!-- Dynamic fill -->
+                            <rect id="power-fill" x="5" y="22" width="6" height="0" rx="3" fill="#4ade80" />
+                        </svg>
+                        <p>Power: <span id="power-display">0</span>%</p>
+                    </div>
                 </div>
             </div>
 
             <div class="player-info" id="cpu-hud">
                 <p>Computer</p>
                 <p>HP: <span id="cpu-hp">100</span></p>
+                <div class="hp-bar-container"><div class="hp-bar" id="cpu-hp-bar"></div></div>
             </div>
         </div>
 
-        <canvas id="gameCanvas" width="800" height="500"></canvas>
+        <canvas id="gameCanvas" width="1000" height="600"></canvas>
         
         <div class="instructions">
             <p>Controls:</p>

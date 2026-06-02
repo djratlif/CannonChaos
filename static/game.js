@@ -51,20 +51,23 @@ class Tank {
     }
 
     draw() {
-        // Draw body
-        ctx.fillStyle = this.color;
-        ctx.fillRect(this.x - this.width/2, this.y, this.width, this.height);
-        // Draw top cabin
-        ctx.fillRect(this.x - this.width/4, this.y - 10, this.width/2, 10);
-        
-        // Draw barrel
+        // Draw barrel starting from center of triangle (drawn first so base is hidden behind body)
         ctx.strokeStyle = '#333';
         ctx.lineWidth = 4;
         ctx.beginPath();
-        ctx.moveTo(this.x, this.y - 5);
+        ctx.moveTo(this.x, this.y + 7);
         const rad = this.angle * Math.PI / 180;
-        ctx.lineTo(this.x + Math.cos(rad) * 20, this.y - 5 - Math.sin(rad) * 20);
+        ctx.lineTo(this.x + Math.cos(rad) * 20, this.y + 7 - Math.sin(rad) * 20);
         ctx.stroke();
+
+        // Draw triangular body (8-bit style)
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.moveTo(this.x - this.width/2, this.y + this.height); // bottom-left
+        ctx.lineTo(this.x + this.width/2, this.y + this.height); // bottom-right
+        ctx.lineTo(this.x, this.y - 10); // top peak
+        ctx.closePath();
+        ctx.fill();
 
         // Draw Health Bar above
         ctx.fillStyle = 'red';
@@ -177,7 +180,7 @@ function generateTerrain() {
 function initGame() {
     generateTerrain();
     player = new Tank(100, '#3b82f6', true);
-    cpu = new Tank(700, '#ef4444', false);
+    cpu = new Tank(WIDTH - 100, '#ef4444', false);
     turn = 0;
     currentState = GAME_STATE.PLAYING;
     previousTrajectory = [];
@@ -220,7 +223,7 @@ function handleInput() {
     if (currentState !== GAME_STATE.PLAYING || turn !== 0 || currentProjectile?.active) return;
 
     // Angle adjustment: Left/Right keys
-    if (keys.ArrowLeft && player.angle < 90) {
+    if (keys.ArrowLeft && player.angle < 180) {
         player.angle += 1;
         updateHUD();
     }
@@ -245,7 +248,7 @@ function handleInput() {
 function fireProjectile(tank) {
     const rad = tank.angle * Math.PI / 180;
     const spawnX = tank.x + Math.cos(rad) * 20;
-    const spawnY = tank.y - 5 - Math.sin(rad) * 20;
+    const spawnY = tank.y + 7 - Math.sin(rad) * 20;
     currentProjectile = new Projectile(spawnX, spawnY, tank.angle, tank.power, tank.isPlayer);
     updateHUD();
 }
@@ -300,6 +303,21 @@ Projectile.prototype.explode = function() {
 function updateHUD() {
     document.getElementById('player-hp').innerText = player.hp;
     document.getElementById('cpu-hp').innerText = cpu.hp;
+
+    const playerHpBar = document.getElementById('player-hp-bar');
+    if (playerHpBar) {
+        playerHpBar.style.width = player.hp + '%';
+        if (player.hp < 30) playerHpBar.style.backgroundColor = 'var(--cpu-color)';
+        else if (player.hp < 60) playerHpBar.style.backgroundColor = 'var(--primary-color)';
+        else playerHpBar.style.backgroundColor = '#22c55e';
+    }
+    const cpuHpBar = document.getElementById('cpu-hp-bar');
+    if (cpuHpBar) {
+        cpuHpBar.style.width = cpu.hp + '%';
+        if (cpu.hp < 30) cpuHpBar.style.backgroundColor = 'var(--cpu-color)';
+        else if (cpu.hp < 60) cpuHpBar.style.backgroundColor = 'var(--primary-color)';
+        else cpuHpBar.style.backgroundColor = '#22c55e';
+    }
     
     let turnIndicator = document.getElementById('turn-indicator');
     if (currentState === GAME_STATE.GAMEOVER) {
@@ -315,9 +333,45 @@ function updateHUD() {
     if (turn === 0) {
         document.getElementById('angle-display').innerText = player.angle;
         document.getElementById('power-display').innerText = Math.floor((player.power / player.maxPower) * 100);
+        
+        const needle = document.getElementById('angle-needle');
+        if (needle) {
+            const rad = player.angle * Math.PI / 180;
+            const x2 = 12 + Math.cos(rad) * 9;
+            const y2 = 18 - Math.sin(rad) * 9;
+            needle.setAttribute('x2', x2);
+            needle.setAttribute('y2', y2);
+        }
+
+        const powerFill = document.getElementById('power-fill');
+        if (powerFill) {
+            const pct = Math.floor((player.power / player.maxPower) * 100);
+            const height = (pct / 100) * 20;
+            const y = 22 - height;
+            powerFill.setAttribute('y', y);
+            powerFill.setAttribute('height', height);
+            if (pct < 40) {
+                powerFill.setAttribute('fill', '#4ade80');
+            } else if (pct < 75) {
+                powerFill.setAttribute('fill', '#ffcc00');
+            } else {
+                powerFill.setAttribute('fill', '#ef4444');
+            }
+        }
     } else {
         document.getElementById('angle-display').innerText = '???';
         document.getElementById('power-display').innerText = '???';
+        
+        const needle = document.getElementById('angle-needle');
+        if (needle) {
+            needle.setAttribute('x2', 12);
+            needle.setAttribute('y2', 9);
+        }
+        const powerFill = document.getElementById('power-fill');
+        if (powerFill) {
+            powerFill.setAttribute('height', 0);
+            powerFill.setAttribute('y', 22);
+        }
     }
 }
 
