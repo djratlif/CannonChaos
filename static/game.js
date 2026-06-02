@@ -48,6 +48,39 @@ class Tank {
         this.lastShotTooShort = null;
         this.lastPower = 0;
         this.lastAngle = 135;
+
+        // Falling animation properties
+        this.targetY = this.y;
+        this.isFalling = false;
+        this.hoverTimer = 0;
+    }
+
+    update() {
+        if (this.isFalling) {
+            if (this.hoverTimer > 0) {
+                this.hoverTimer--;
+            } else {
+                this.y += 2; // Simple 2px per frame fall
+                if (this.y >= this.targetY) {
+                    this.y = this.targetY;
+                    this.isFalling = false;
+                    
+                    // Calculate and apply fall damage (0.15 HP per pixel fallen)
+                    const fallDistance = this.targetY - this.fallStartY;
+                    if (fallDistance > 10) {
+                        const damage = Math.floor(fallDistance * 0.15);
+                        this.hp -= damage;
+                        if (this.hp < 0) this.hp = 0;
+                        updateHUD();
+                        
+                        if (this.hp <= 0) {
+                            currentState = GAME_STATE.GAMEOVER;
+                            updateHUD();
+                        }
+                    }
+                }
+            }
+        }
     }
 
     draw() {
@@ -139,6 +172,9 @@ class Projectile {
         this.active = false;
         previousTrajectory = [...this.path]; // Save trajectory
         
+        // Destroy terrain at impact point (small crater radius of 25)
+        destroyTerrain(this.x, this.y, 25);
+
         if (player.hp <= 0 || cpu.hp <= 0) {
             currentState = GAME_STATE.GAMEOVER;
             updateHUD();
@@ -158,6 +194,66 @@ class Projectile {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fill();
+    }
+}
+
+function destroyTerrain(impactX, impactY, radius) {
+    for (let i = 0; i < terrain.length; i++) {
+        const dist = Math.abs(terrain[i].x - impactX);
+        if (dist < radius) {
+            // Semi-circular crater math
+            const depth = Math.sqrt(radius * radius - dist * dist);
+            const craterBottomY = impactY + depth;
+            if (terrain[i].y < craterBottomY) {
+                terrain[i].y = craterBottomY;
+                if (terrain[i].y > HEIGHT) terrain[i].y = HEIGHT;
+            }
+        }
+    }
+    updateTankPositions();
+}
+
+function updateTankPositions() {
+    if (!player || !cpu) return;
+    
+    // Player
+    for (let i = 0; i < terrain.length; i++) {
+        if (terrain[i].x >= player.x) {
+            const nextTargetY = terrain[i].y - player.height;
+            if (nextTargetY > player.y) {
+                if (!player.isFalling) {
+                    player.targetY = nextTargetY;
+                    player.fallStartY = player.y; // Record start of fall
+                    player.isFalling = true;
+                    player.hoverTimer = 60; // 60 frames = 1 second at 60fps
+                }
+            } else {
+                player.y = nextTargetY;
+                player.targetY = nextTargetY;
+                player.isFalling = false;
+            }
+            break;
+        }
+    }
+    
+    // CPU
+    for (let i = 0; i < terrain.length; i++) {
+        if (terrain[i].x >= cpu.x) {
+            const nextTargetY = terrain[i].y - cpu.height;
+            if (nextTargetY > cpu.y) {
+                if (!cpu.isFalling) {
+                    cpu.targetY = nextTargetY;
+                    cpu.fallStartY = cpu.y; // Record start of fall
+                    cpu.isFalling = true;
+                    cpu.hoverTimer = 60; // 60 frames = 1 second at 60fps
+                }
+            } else {
+                cpu.y = nextTargetY;
+                cpu.targetY = nextTargetY;
+                cpu.isFalling = false;
+            }
+            break;
+        }
     }
 }
 
@@ -423,6 +519,8 @@ function gameLoop() {
     drawTerrain();
     drawTrajectory();
     
+    player.update();
+    cpu.update();
     player.draw();
     cpu.draw();
 
