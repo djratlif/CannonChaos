@@ -96,8 +96,17 @@ class Projectile {
         this.x += this.vx;
         this.y += this.vy;
 
-        // Collision with bounds
-        if (this.x < 0 || this.x > WIDTH || this.y > HEIGHT) {
+        // Bounce off left/right walls
+        if (this.x < 0) {
+            this.x = 0;
+            this.vx = -this.vx;
+        } else if (this.x > WIDTH) {
+            this.x = WIDTH;
+            this.vx = -this.vx;
+        }
+
+        // Collision with bottom boundary
+        if (this.y > HEIGHT) {
             this.explode();
         }
 
