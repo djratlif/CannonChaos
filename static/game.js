@@ -294,6 +294,13 @@ const keys = {
     Space: false
 };
 
+const touchKeys = {
+    ArrowUp: false,
+    ArrowDown: false,
+    ArrowLeft: false,
+    ArrowRight: false
+};
+
 window.addEventListener('keydown', (e) => {
     if (currentState !== GAME_STATE.PLAYING || turn !== 0 || currentProjectile?.active) return;
     
@@ -318,23 +325,23 @@ window.addEventListener('keyup', (e) => {
 function handleInput() {
     if (currentState !== GAME_STATE.PLAYING || turn !== 0 || currentProjectile?.active) return;
 
-    // Angle adjustment: Left/Right keys
-    if (keys.ArrowLeft && player.angle < 180) {
+    // Angle adjustment: Left/Right keys or touch buttons
+    if ((keys.ArrowLeft || touchKeys.ArrowLeft) && player.angle < 180) {
         player.angle += 1;
         updateHUD();
     }
-    if (keys.ArrowRight && player.angle > 0) {
+    if ((keys.ArrowRight || touchKeys.ArrowRight) && player.angle > 0) {
         player.angle -= 1;
         updateHUD();
     }
 
-    // Power adjustment: Up/Down keys (set statically)
-    if (keys.ArrowUp && player.power < player.maxPower) {
+    // Power adjustment: Up/Down keys or touch buttons
+    if ((keys.ArrowUp || touchKeys.ArrowUp) && player.power < player.maxPower) {
         player.power += 0.2;
         if (player.power > player.maxPower) player.power = player.maxPower;
         updateHUD();
     }
-    if (keys.ArrowDown && player.power > 0) {
+    if ((keys.ArrowDown || touchKeys.ArrowDown) && player.power > 0) {
         player.power -= 0.2;
         if (player.power < 0) player.power = 0;
         updateHUD();
@@ -539,5 +546,46 @@ function gameLoop() {
     }
 }
 
+function setupMobileControls() {
+    const bindTouchKey = (btnId, keyName) => {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+        
+        const startPress = (e) => {
+            e.preventDefault();
+            touchKeys[keyName] = true;
+        };
+        const endPress = (e) => {
+            e.preventDefault();
+            touchKeys[keyName] = false;
+        };
+        
+        btn.addEventListener('mousedown', startPress);
+        btn.addEventListener('mouseup', endPress);
+        btn.addEventListener('mouseleave', endPress);
+        
+        btn.addEventListener('touchstart', startPress, { passive: false });
+        btn.addEventListener('touchend', endPress, { passive: false });
+        btn.addEventListener('touchcancel', endPress, { passive: false });
+    };
+
+    bindTouchKey('btn-power-up', 'ArrowUp');
+    bindTouchKey('btn-power-down', 'ArrowDown');
+    bindTouchKey('btn-angle-left', 'ArrowLeft');
+    bindTouchKey('btn-angle-right', 'ArrowRight');
+
+    const fireBtn = document.getElementById('btn-fire');
+    if (fireBtn) {
+        const handleFire = (e) => {
+            e.preventDefault();
+            if (currentState !== GAME_STATE.PLAYING || turn !== 0 || currentProjectile?.active) return;
+            fireProjectile(player);
+        };
+        fireBtn.addEventListener('click', handleFire);
+        fireBtn.addEventListener('touchstart', handleFire, { passive: false });
+    }
+}
+
 // Start
+setupMobileControls();
 initGame();

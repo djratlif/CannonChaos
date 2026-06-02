@@ -55,8 +55,24 @@
         
         <div class="instructions">
             <p>Controls:</p>
-            <p>[UP] / [DOWN] Arrows to change Angle</p>
-            <p>Hold [SPACE] to increase Power, Release to Fire!</p>
+            <p>Desktop: [LEFT] / [RIGHT] Arrows to change Angle, [UP] / [DOWN] for Power. Press [SPACE] to Fire!</p>
+            <p>Mobile: Use on-screen controls below.</p>
+        </div>
+
+        <div class="mobile-controls">
+            <div class="dpad">
+                <div class="dpad-row">
+                    <button id="btn-power-up" class="btn-control">▲ Power</button>
+                </div>
+                <div class="dpad-row-mid">
+                    <button id="btn-angle-left" class="btn-control">◀ Angle</button>
+                    <button id="btn-angle-right" class="btn-control">Angle ▶</button>
+                </div>
+                <div class="dpad-row">
+                    <button id="btn-power-down" class="btn-control">▼ Power</button>
+                </div>
+            </div>
+            <button id="btn-fire" class="btn-fire">FIRE</button>
         </div>
     </div>
 

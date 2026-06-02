@@ -31,6 +31,7 @@ body {
     border: 4px solid #fff;
     padding: 20px;
     box-shadow: 10px 10px 0px #000;
+    max-width: 95vw;
 }
 
 header h1 {
@@ -95,6 +96,8 @@ header h1 {
 }
 
 canvas {
+    max-width: 100%;
+    height: auto;
     background-color: #87CEEB; /* Sky blue */
     border: 4px solid #fff;
     image-rendering: pixelated; /* Ensures the canvas looks blocky when scaled if needed */
@@ -125,4 +128,103 @@ canvas {
 
 #cpu-hud .hp-bar {
     float: right;
+}
+
+.mobile-controls {
+    display: none;
+    margin-top: 15px;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+}
+
+@media (max-width: 1024px), (pointer: coarse) {
+    .mobile-controls {
+        display: flex;
+    }
+}
+
+.dpad {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.dpad-row {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+.dpad-row-mid {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+    align-items: center;
+    margin: 2px 0;
+}
+
+.btn-control {
+    background: #223344;
+    color: #fff;
+    border: 2px solid #fff;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 8px;
+    padding: 10px 14px;
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+    box-shadow: 4px 4px 0px #000;
+}
+
+.btn-control:active {
+    box-shadow: 0px 0px 0px #000;
+    transform: translate(4px, 4px);
+    background: #3b82f6;
+}
+
+.btn-fire {
+    background: #ef4444;
+    color: #fff;
+    border: 2px solid #fff;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 14px;
+    padding: 16px 30px;
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+    box-shadow: 5px 5px 0px #000;
+}
+
+.btn-fire:active {
+    box-shadow: 0px 0px 0px #000;
+    transform: translate(5px, 5px);
+    background: #b91c1c;
+}
+
+@media (max-width: 600px) {
+    body {
+        height: auto;
+        padding: 10px 0;
+        overflow-y: auto;
+    }
+    .hud {
+        font-size: 8px;
+        flex-direction: row;
+        gap: 5px;
+    }
+    .player-info {
+        width: 120px;
+        padding: 6px;
+    }
+    .btn-control {
+        font-size: 8px;
+        padding: 8px 10px;
+    }
+    .btn-fire {
+        font-size: 12px;
+        padding: 12px 24px;
+    }
 }
