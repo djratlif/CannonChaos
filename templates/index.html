@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cannon Chaos</title>
+    <title>Cannon Chaos (Build {{ build_version }})</title>
     <!-- Use Google Fonts for 8-bit style -->
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
@@ -11,7 +11,7 @@
 <body>
     <div class="game-container">
         <header>
-            <h1>Cannon Chaos</h1>
+            <h1>Cannon Chaos <span style="font-size: 10px; color: #aaa; vertical-align: middle; margin-left: 10px;">Build {{ build_version }}</span></h1>
         </header>
 
         <div class="hud">
