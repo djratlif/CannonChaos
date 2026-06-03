@@ -15,7 +15,7 @@
 body {
     background-color: var(--bg-color);
     color: var(--text-color);
-    font-family: 'Press Start 2P', cursive; /* 8-bit font */
+    font-family: system-ui, -apple-system, sans-serif;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -36,6 +36,7 @@ body {
 
 header h1 {
     color: var(--primary-color);
+    font-family: 'Press Start 2P', cursive;
     font-size: 24px;
     margin-bottom: 20px;
     text-shadow: 2px 2px 0px #000;
@@ -60,6 +61,18 @@ header h1 {
     width: 200px;
 }
 
+.player-info p:first-child {
+    font-weight: 800;
+    font-size: 16px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.player-info p:nth-child(2) {
+    font-weight: 700;
+    font-size: 13px;
+}
+
 #player-hud {
     color: var(--player-color);
     border-color: var(--player-color);
@@ -79,7 +92,10 @@ header h1 {
 }
 
 #turn-indicator {
-    font-size: 14px;
+    font-size: 18px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
     color: var(--primary-color);
     animation: blink 1.5s infinite;
 }
@@ -170,8 +186,9 @@ canvas {
     background: #223344;
     color: #fff;
     border: 2px solid #fff;
-    font-family: 'Press Start 2P', cursive;
-    font-size: 8px;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 11px;
+    font-weight: bold;
     padding: 10px 14px;
     cursor: pointer;
     touch-action: manipulation;
@@ -189,8 +206,9 @@ canvas {
     background: #ef4444;
     color: #fff;
     border: 2px solid #fff;
-    font-family: 'Press Start 2P', cursive;
-    font-size: 14px;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    font-weight: bold;
     padding: 16px 30px;
     cursor: pointer;
     touch-action: manipulation;
