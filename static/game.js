@@ -53,6 +53,12 @@ class Tank {
         this.targetY = this.y;
         this.isFalling = false;
         this.hoverTimer = 0;
+
+        // Weapon inventory
+        this.selectedWeapon = 'standard';
+        this.mediumShots = 2;
+        this.doubleShots = 3;
+        this.ricochetShots = 3;
     }
 
     update() {
@@ -111,16 +117,19 @@ class Tank {
 }
 
 class Projectile {
-    constructor(x, y, angle, power, ownerIsPlayer) {
+    constructor(x, y, angle, power, ownerIsPlayer, type = 'standard') {
         this.x = x;
         this.y = y;
         const rad = angle * Math.PI / 180;
         this.vx = Math.cos(rad) * power;
         this.vy = -Math.sin(rad) * power;
-        this.radius = 4;
+        this.radius = type === 'medium' ? 6 : (type === 'double' ? 5 : (type === 'ricochet' ? 5 : 4));
         this.active = true;
         this.ownerIsPlayer = ownerIsPlayer;
+        this.type = type;
         this.path = []; // Store path for trajectory drawing
+        this.hasSplit = false;
+        this.ricochetCount = 0;
     }
 
     update() {
@@ -131,6 +140,26 @@ class Projectile {
         this.vy += GRAVITY;
         this.x += this.vx;
         this.y += this.vy;
+
+        // Double splits into 2 when dropping (vy > 0)
+        if (this.type === 'double' && this.vy > 0 && !this.hasSplit) {
+            this.hasSplit = true;
+            this.active = false;
+            
+            // Spawn 2 child standard shells
+            const child1 = new Projectile(this.x, this.y, 0, 0, this.ownerIsPlayer, 'standard');
+            child1.vx = this.vx + 1.5;
+            child1.vy = this.vy;
+            child1.path = [...this.path];
+            
+            const child2 = new Projectile(this.x, this.y, 0, 0, this.ownerIsPlayer, 'standard');
+            child2.vx = this.vx - 1.5;
+            child2.vy = this.vy;
+            child2.path = [...this.path];
+            
+            activeProjectiles.push(child1, child2);
+            return;
+        }
 
         // Bounce off left/right walls
         if (this.x < 0) {
@@ -150,7 +179,19 @@ class Projectile {
         if (this.active) {
             for (let i = 0; i < terrain.length; i++) {
                 if (Math.abs(this.x - terrain[i].x) < 5 && this.y >= terrain[i].y) {
-                    this.explode();
+                    if (this.type === 'ricochet' && this.ricochetCount < 3) {
+                        this.ricochetCount++;
+                        destroyTerrain(this.x, this.y, 20); // smaller impact on bounce
+                        
+                        const randAngle = 45 + Math.random() * 90; // 45 to 135 deg
+                        const rad = randAngle * Math.PI / 180;
+                        const bouncePower = 5 + Math.random() * 8; // Random power between 5 and 13
+                        this.vx = Math.cos(rad) * bouncePower;
+                        this.vy = -Math.sin(rad) * bouncePower;
+                        this.y = terrain[i].y - 8; // Adjust upward to avoid stuck
+                    } else {
+                        this.explode();
+                    }
                     break;
                 }
             }
@@ -161,9 +202,25 @@ class Projectile {
             let target = this.ownerIsPlayer ? cpu : player;
             if (this.x > target.x - target.width/2 && this.x < target.x + target.width/2 &&
                 this.y > target.y - target.height && this.y < target.y + target.height) {
-                target.hp -= 25; // Fixed damage for now
-                if (target.hp < 0) target.hp = 0;
-                this.explode();
+                
+                if (this.type === 'ricochet' && this.ricochetCount < 3) {
+                    this.ricochetCount++;
+                    target.hp -= 15; // Lower damage for intermediate ricochet hits
+                    if (target.hp < 0) target.hp = 0;
+                    destroyTerrain(this.x, this.y, 20);
+                    
+                    const randAngle = 45 + Math.random() * 90;
+                    const rad = randAngle * Math.PI / 180;
+                    const bouncePower = 5 + Math.random() * 8; // Random power between 5 and 13
+                    this.vx = Math.cos(rad) * bouncePower;
+                    this.vy = -Math.sin(rad) * bouncePower;
+                    this.y = target.y - target.height - 8;
+                } else {
+                    const damage = this.type === 'medium' ? 40 : 25;
+                    target.hp -= damage;
+                    if (target.hp < 0) target.hp = 0;
+                    this.explode();
+                }
             }
         }
     }
@@ -172,19 +229,23 @@ class Projectile {
         this.active = false;
         previousTrajectory = [...this.path]; // Save trajectory
         
-        // Destroy terrain at impact point (small crater radius of 25)
-        destroyTerrain(this.x, this.y, 25);
+        // Destroy terrain at impact point (medium crater is 45, standard is 25)
+        const craterRadius = this.type === 'medium' ? 45 : 25;
+        destroyTerrain(this.x, this.y, craterRadius);
 
-        if (player.hp <= 0 || cpu.hp <= 0) {
-            currentState = GAME_STATE.GAMEOVER;
-            updateHUD();
-        } else {
-            // Next Turn
-            turn = turn === 0 ? 1 : 0;
-            if (turn === 1) {
-                setTimeout(cpuTurn, 1000);
+        const anyActive = activeProjectiles.some(p => p.active);
+        if (!anyActive) {
+            if (player.hp <= 0 || cpu.hp <= 0) {
+                currentState = GAME_STATE.GAMEOVER;
+                updateHUD();
+            } else {
+                // Next Turn
+                turn = turn === 0 ? 1 : 0;
+                if (turn === 1) {
+                    setTimeout(cpuTurn, 1000);
+                }
+                updateHUD();
             }
-            updateHUD();
         }
     }
 
@@ -257,7 +318,8 @@ function updateTankPositions() {
     }
 }
 
-let player, cpu, currentProjectile;
+let player, cpu;
+let activeProjectiles = [];
 
 // Generate 8-bit style terrain
 function generateTerrain() {
@@ -280,7 +342,7 @@ function initGame() {
     turn = 0;
     currentState = GAME_STATE.PLAYING;
     previousTrajectory = [];
-    currentProjectile = null;
+    activeProjectiles = [];
     updateHUD();
     gameLoop();
 }
@@ -302,7 +364,7 @@ const touchKeys = {
 };
 
 window.addEventListener('keydown', (e) => {
-    if (currentState !== GAME_STATE.PLAYING || turn !== 0 || currentProjectile?.active) return;
+    if (currentState !== GAME_STATE.PLAYING || turn !== 0 || activeProjectiles.some(p => p.active)) return;
     
     if (e.code === 'ArrowUp') keys.ArrowUp = true;
     if (e.code === 'ArrowDown') keys.ArrowDown = true;
@@ -323,7 +385,7 @@ window.addEventListener('keyup', (e) => {
 });
 
 function handleInput() {
-    if (currentState !== GAME_STATE.PLAYING || turn !== 0 || currentProjectile?.active) return;
+    if (currentState !== GAME_STATE.PLAYING || turn !== 0 || activeProjectiles.some(p => p.active)) return;
 
     // Angle adjustment: Left/Right keys or touch buttons
     if ((keys.ArrowLeft || touchKeys.ArrowLeft) && player.angle < 180) {
@@ -352,7 +414,29 @@ function fireProjectile(tank) {
     const rad = tank.angle * Math.PI / 180;
     const spawnX = tank.x + Math.cos(rad) * 20;
     const spawnY = tank.y + 7 - Math.sin(rad) * 20;
-    currentProjectile = new Projectile(spawnX, spawnY, tank.angle, tank.power, tank.isPlayer);
+    
+    let weaponType = 'standard';
+    if (tank.isPlayer) {
+        weaponType = tank.selectedWeapon;
+        if (weaponType === 'medium') {
+            tank.mediumShots--;
+            if (tank.mediumShots <= 0) {
+                tank.selectedWeapon = 'standard';
+            }
+        } else if (weaponType === 'double') {
+            tank.doubleShots--;
+            if (tank.doubleShots <= 0) {
+                tank.selectedWeapon = 'standard';
+            }
+        } else if (weaponType === 'ricochet') {
+            tank.ricochetShots--;
+            if (tank.ricochetShots <= 0) {
+                tank.selectedWeapon = 'standard';
+            }
+        }
+    }
+    
+    activeProjectiles.push(new Projectile(spawnX, spawnY, tank.angle, tank.power, tank.isPlayer, weaponType));
     updateHUD();
 }
 
@@ -476,6 +560,65 @@ function updateHUD() {
             powerFill.setAttribute('y', 22);
         }
     }
+    // Update Weapon Selector Button States
+    const standardBtn = document.getElementById('weapon-standard');
+    const mediumBtn = document.getElementById('weapon-medium');
+    const doubleBtn = document.getElementById('weapon-double');
+    const ricochetBtn = document.getElementById('weapon-ricochet');
+    
+    if (standardBtn && mediumBtn && doubleBtn && ricochetBtn && player) {
+        // Medium button
+        mediumBtn.innerText = `Medium (${player.mediumShots})`;
+        if (player.mediumShots <= 0) {
+            mediumBtn.disabled = true;
+            mediumBtn.style.opacity = 0.5;
+            mediumBtn.style.cursor = 'not-allowed';
+        } else {
+            mediumBtn.disabled = false;
+            mediumBtn.style.opacity = 1;
+            mediumBtn.style.cursor = 'pointer';
+        }
+
+        // Double button
+        doubleBtn.innerText = `Double (${player.doubleShots})`;
+        if (player.doubleShots <= 0) {
+            doubleBtn.disabled = true;
+            doubleBtn.style.opacity = 0.5;
+            doubleBtn.style.cursor = 'not-allowed';
+        } else {
+            doubleBtn.disabled = false;
+            doubleBtn.style.opacity = 1;
+            doubleBtn.style.cursor = 'pointer';
+        }
+
+        // Ricochet button
+        ricochetBtn.innerText = `Ricochet (${player.ricochetShots})`;
+        if (player.ricochetShots <= 0) {
+            ricochetBtn.disabled = true;
+            ricochetBtn.style.opacity = 0.5;
+            ricochetBtn.style.cursor = 'not-allowed';
+        } else {
+            ricochetBtn.disabled = false;
+            ricochetBtn.style.opacity = 1;
+            ricochetBtn.style.cursor = 'pointer';
+        }
+        
+        // Handle active classes
+        standardBtn.classList.remove('active');
+        mediumBtn.classList.remove('active');
+        doubleBtn.classList.remove('active');
+        ricochetBtn.classList.remove('active');
+
+        if (player.selectedWeapon === 'standard') {
+            standardBtn.classList.add('active');
+        } else if (player.selectedWeapon === 'medium') {
+            mediumBtn.classList.add('active');
+        } else if (player.selectedWeapon === 'double') {
+            doubleBtn.classList.add('active');
+        } else if (player.selectedWeapon === 'ricochet') {
+            ricochetBtn.classList.add('active');
+        }
+    }
 }
 
 function drawTerrain() {
@@ -531,12 +674,17 @@ function gameLoop() {
     player.draw();
     cpu.draw();
 
-    if (currentProjectile && currentProjectile.active) {
-        currentProjectile.update();
-        currentProjectile.draw();
+    for (let i = activeProjectiles.length - 1; i >= 0; i--) {
+        const proj = activeProjectiles[i];
+        if (proj.active) {
+            proj.update();
+            proj.draw();
+        } else {
+            activeProjectiles.splice(i, 1);
+        }
     }
 
-    if (currentState === GAME_STATE.PLAYING || currentProjectile?.active) {
+    if (currentState === GAME_STATE.PLAYING || activeProjectiles.some(p => p.active)) {
         requestAnimationFrame(gameLoop);
     } else {
         // Draw one last frame to show game over state
@@ -578,11 +726,55 @@ function setupMobileControls() {
     if (fireBtn) {
         const handleFire = (e) => {
             e.preventDefault();
-            if (currentState !== GAME_STATE.PLAYING || turn !== 0 || currentProjectile?.active) return;
+            if (currentState !== GAME_STATE.PLAYING || turn !== 0 || activeProjectiles.some(p => p.active)) return;
             fireProjectile(player);
         };
         fireBtn.addEventListener('click', handleFire);
         fireBtn.addEventListener('touchstart', handleFire, { passive: false });
+    }
+
+    const standardBtn = document.getElementById('weapon-standard');
+    const mediumBtn = document.getElementById('weapon-medium');
+    const doubleBtn = document.getElementById('weapon-double');
+    const ricochetBtn = document.getElementById('weapon-ricochet');
+
+    if (standardBtn) {
+        standardBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (currentState !== GAME_STATE.PLAYING || turn !== 0 || activeProjectiles.some(p => p.active)) return;
+            player.selectedWeapon = 'standard';
+            updateHUD();
+        });
+    }
+    if (mediumBtn) {
+        mediumBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (currentState !== GAME_STATE.PLAYING || turn !== 0 || activeProjectiles.some(p => p.active)) return;
+            if (player.mediumShots > 0) {
+                player.selectedWeapon = 'medium';
+                updateHUD();
+            }
+        });
+    }
+    if (doubleBtn) {
+        doubleBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (currentState !== GAME_STATE.PLAYING || turn !== 0 || activeProjectiles.some(p => p.active)) return;
+            if (player.doubleShots > 0) {
+                player.selectedWeapon = 'double';
+                updateHUD();
+            }
+        });
+    }
+    if (ricochetBtn) {
+        ricochetBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (currentState !== GAME_STATE.PLAYING || turn !== 0 || activeProjectiles.some(p => p.active)) return;
+            if (player.ricochetShots > 0) {
+                player.selectedWeapon = 'ricochet';
+                updateHUD();
+            }
+        });
     }
 }
 

@@ -22,24 +22,35 @@
                 <div class="hp-bar-container"><div class="hp-bar" id="player-hp-bar"></div></div>
             </div>
             
-            <div class="game-info">
-                <p id="turn-indicator">Player's Turn</p>
-                <div class="controls-info">
-                    <div class="control-item" style="display: flex; align-items: center; gap: 8px;">
-                        <svg id="angle-svg" width="24" height="24" viewBox="0 0 24 24" style="vertical-align: middle;">
-                            <path d="M 3 18 A 9 9 0 0 1 21 18" fill="none" stroke="#666" stroke-width="2" />
-                            <line id="angle-needle" x1="12" y1="18" x2="18.36" y2="11.64" stroke="var(--primary-color)" stroke-width="2.5" stroke-linecap="round" />
-                        </svg>
-                        <p>Angle: <span id="angle-display">45</span>&deg;</p>
+            <div class="game-info" style="display: flex; flex-direction: row; align-items: center; gap: 24px;">
+                <div class="game-status-controls" style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                    <p id="turn-indicator">Player's Turn</p>
+                    <div class="controls-info" style="display: flex; flex-direction: column; gap: 8px; color: #00ffcc;">
+                        <div class="control-item" style="display: flex; align-items: center; gap: 8px;">
+                            <svg id="angle-svg" width="24" height="24" viewBox="0 0 24 24" style="vertical-align: middle;">
+                                <path d="M 3 18 A 9 9 0 0 1 21 18" fill="none" stroke="#666" stroke-width="2" />
+                                <line id="angle-needle" x1="12" y1="18" x2="18.36" y2="11.64" stroke="var(--primary-color)" stroke-width="2.5" stroke-linecap="round" />
+                            </svg>
+                            <p>Angle: <span id="angle-display">45</span>&deg;</p>
+                        </div>
+                        <div class="control-item" style="display: flex; align-items: center; gap: 8px;">
+                            <svg id="power-svg" width="16" height="24" viewBox="0 0 16 24" style="vertical-align: middle;">
+                                <!-- Thermometer outline -->
+                                <rect x="5" y="2" width="6" height="20" rx="3" fill="#334455" stroke="#666" stroke-width="1" />
+                                <!-- Dynamic fill -->
+                                <rect id="power-fill" x="5" y="22" width="6" height="0" rx="3" fill="#4ade80" />
+                            </svg>
+                            <p>Power: <span id="power-display">0</span>%</p>
+                        </div>
                     </div>
-                    <div class="control-item" style="display: flex; align-items: center; gap: 8px;">
-                        <svg id="power-svg" width="16" height="24" viewBox="0 0 16 24" style="vertical-align: middle;">
-                            <!-- Thermometer outline -->
-                            <rect x="5" y="2" width="6" height="20" rx="3" fill="#334455" stroke="#666" stroke-width="1" />
-                            <!-- Dynamic fill -->
-                            <rect id="power-fill" x="5" y="22" width="6" height="0" rx="3" fill="#4ade80" />
-                        </svg>
-                        <p>Power: <span id="power-display">0</span>%</p>
+                </div>
+                <div class="weapon-selector">
+                    <p style="font-size: 10px; color: #aaa; margin-bottom: 4px; text-transform: uppercase;">Cannon</p>
+                    <div class="weapon-grid">
+                        <button id="weapon-standard" class="btn-weapon active">Standard (∞)</button>
+                        <button id="weapon-medium" class="btn-weapon">Medium (2)</button>
+                        <button id="weapon-double" class="btn-weapon">Double (3)</button>
+                        <button id="weapon-ricochet" class="btn-weapon">Ricochet (3)</button>
                     </div>
                 </div>
             </div>
