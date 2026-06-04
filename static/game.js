@@ -3,10 +3,24 @@ const ctx = canvas.getContext('2d');
 
 // Game State
 const GAME_STATE = {
+    MENU: 'MENU',
     PLAYING: 'PLAYING',
     GAMEOVER: 'GAMEOVER'
 };
-let currentState = GAME_STATE.PLAYING;
+
+// DEV CONFIG: Set to true to bypass title screen menu during development
+const DEV_SKIP_MENU = false; 
+
+const skipMenu = DEV_SKIP_MENU || new URLSearchParams(window.location.search).has('skipMenu');
+let currentState = skipMenu ? GAME_STATE.PLAYING : GAME_STATE.MENU;
+
+function setGameState(state) {
+    currentState = state;
+    const container = document.querySelector('.game-container');
+    if (container) {
+        container.className = `game-container state-${state.toLowerCase()}`;
+    }
+}
 
 // Entities
 let terrain = [];
@@ -59,6 +73,8 @@ class Tank {
         this.mediumShots = 2;
         this.doubleShots = 3;
         this.ricochetShots = 3;
+        this.bubbleShots = 1;
+        this.shieldHp = 0;
     }
 
     update() {
@@ -71,19 +87,32 @@ class Tank {
                     this.y = this.targetY;
                     this.isFalling = false;
                     
-                    // Calculate and apply fall damage (0.15 HP per pixel fallen)
+                    // Calculate and apply fall damage (0.4 HP per pixel fallen, absorbed by shield first)
                     const fallDistance = this.targetY - this.fallStartY;
                     if (fallDistance > 10) {
-                        const damage = Math.floor(fallDistance * 0.15);
-                        this.hp -= damage;
-                        if (this.hp < 0) this.hp = 0;
+                        let damage = Math.floor(fallDistance * 0.4);
+                        if (this.shieldHp > 0) {
+                            if (this.shieldHp >= damage) {
+                                this.shieldHp -= damage;
+                                damage = 0;
+                            } else {
+                                damage -= this.shieldHp;
+                                this.shieldHp = 0;
+                            }
+                        }
+                        if (damage > 0) {
+                            this.hp -= damage;
+                            if (this.hp < 0) this.hp = 0;
+                        }
                         updateHUD();
                         
                         if (this.hp <= 0) {
-                            currentState = GAME_STATE.GAMEOVER;
+                            setGameState(GAME_STATE.GAMEOVER);
                             updateHUD();
                         }
                     }
+                    // Check if we should switch turn now that falling has finished
+                    checkTurnTransition();
                 }
             }
         }
@@ -113,6 +142,25 @@ class Tank {
         ctx.fillRect(this.x - 20, this.y - 25, 40, 5);
         ctx.fillStyle = 'green';
         ctx.fillRect(this.x - 20, this.y - 25, (this.hp / 100) * 40, 5);
+
+        // Draw shield if active
+        if (this.shieldHp > 0) {
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.8)';
+            ctx.fillStyle = 'rgba(0, 255, 255, 0.15)';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([4, 4]); // 8-bit style dash
+            ctx.beginPath();
+            ctx.arc(this.x, this.y + 7, 25, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset dash
+
+            // Draw shield HP above health bar
+            ctx.fillStyle = '#00ffff';
+            ctx.font = '8px "Press Start 2P", cursive';
+            ctx.textAlign = 'center';
+            ctx.fillText(`SHIELD:${this.shieldHp}`, this.x, this.y - 32);
+        }
     }
 }
 
@@ -200,6 +248,38 @@ class Projectile {
         // Collision with tanks
         if (this.active) {
             let target = this.ownerIsPlayer ? cpu : player;
+            
+            // Check shield collision first if active!
+            if (target.shieldHp > 0) {
+                const dx = this.x - target.x;
+                const dy = this.y - (target.y + 7);
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const shieldRadius = 25;
+                if (distance < shieldRadius + this.radius) {
+                    const damage = this.type === 'medium' ? 40 : 25;
+                    
+                    if (this.type === 'ricochet' && this.ricochetCount < 3) {
+                        this.ricochetCount++;
+                        target.shieldHp -= 15;
+                        if (target.shieldHp < 0) target.shieldHp = 0;
+                        destroyTerrain(this.x, this.y, 20);
+                        
+                        const randAngle = 45 + Math.random() * 90;
+                        const rad = randAngle * Math.PI / 180;
+                        const bouncePower = 5 + Math.random() * 8;
+                        this.vx = Math.cos(rad) * bouncePower;
+                        this.vy = -Math.sin(rad) * bouncePower;
+                        this.y = (target.y + 7) - 33;
+                    } else {
+                        target.shieldHp -= damage;
+                        if (target.shieldHp < 0) target.shieldHp = 0;
+                        this.explode();
+                    }
+                    updateHUD();
+                    return; // Handled by shield
+                }
+            }
+
             if (this.x > target.x - target.width/2 && this.x < target.x + target.width/2 &&
                 this.y > target.y - target.height && this.y < target.y + target.height) {
                 
@@ -233,20 +313,7 @@ class Projectile {
         const craterRadius = this.type === 'medium' ? 45 : 25;
         destroyTerrain(this.x, this.y, craterRadius);
 
-        const anyActive = activeProjectiles.some(p => p.active);
-        if (!anyActive) {
-            if (player.hp <= 0 || cpu.hp <= 0) {
-                currentState = GAME_STATE.GAMEOVER;
-                updateHUD();
-            } else {
-                // Next Turn
-                turn = turn === 0 ? 1 : 0;
-                if (turn === 1) {
-                    setTimeout(cpuTurn, 1000);
-                }
-                updateHUD();
-            }
-        }
+        checkTurnTransition();
     }
 
     draw() {
@@ -255,6 +322,25 @@ class Projectile {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fill();
+    }
+}
+
+function checkTurnTransition() {
+    if (currentState !== GAME_STATE.PLAYING) return;
+    const anyActive = activeProjectiles.some(p => p.active);
+    const anyFalling = player.isFalling || cpu.isFalling;
+    if (!anyActive && !anyFalling) {
+        if (player.hp <= 0 || cpu.hp <= 0) {
+            setGameState(GAME_STATE.GAMEOVER);
+            updateHUD();
+        } else {
+            // Next Turn
+            turn = turn === 0 ? 1 : 0;
+            if (turn === 1) {
+                setTimeout(cpuTurn, 1000);
+            }
+            updateHUD();
+        }
     }
 }
 
@@ -340,7 +426,11 @@ function initGame() {
     player = new Tank(100, '#3b82f6', true);
     cpu = new Tank(WIDTH - 100, '#ef4444', false);
     turn = 0;
-    currentState = GAME_STATE.PLAYING;
+    
+    // Check whether to start directly in gameplay or menu
+    const skipMenu = DEV_SKIP_MENU || new URLSearchParams(window.location.search).has('skipMenu');
+    setGameState(skipMenu ? GAME_STATE.PLAYING : GAME_STATE.MENU);
+
     previousTrajectory = [];
     activeProjectiles = [];
     updateHUD();
@@ -364,6 +454,11 @@ const touchKeys = {
 };
 
 window.addEventListener('keydown', (e) => {
+    if (currentState === GAME_STATE.MENU) {
+        setGameState(GAME_STATE.PLAYING);
+        updateHUD();
+        return;
+    }
     if (currentState !== GAME_STATE.PLAYING || turn !== 0 || activeProjectiles.some(p => p.active)) return;
     
     if (e.code === 'ArrowUp') keys.ArrowUp = true;
@@ -433,6 +528,19 @@ function fireProjectile(tank) {
             if (tank.ricochetShots <= 0) {
                 tank.selectedWeapon = 'standard';
             }
+        } else if (weaponType === 'bubble') {
+            tank.bubbleShots--;
+            tank.shieldHp = 50;
+            tank.selectedWeapon = 'standard';
+            updateHUD();
+            
+            // Advance turn since no projectile was fired
+            turn = turn === 0 ? 1 : 0;
+            if (turn === 1) {
+                setTimeout(cpuTurn, 1000);
+            }
+            updateHUD();
+            return;
         }
     }
     
@@ -491,6 +599,11 @@ function updateHUD() {
     document.getElementById('player-hp').innerText = player.hp;
     document.getElementById('cpu-hp').innerText = cpu.hp;
 
+    const playerShieldSpan = document.getElementById('player-shield');
+    if (playerShieldSpan) playerShieldSpan.innerText = player.shieldHp;
+    const cpuShieldSpan = document.getElementById('cpu-shield');
+    if (cpuShieldSpan) cpuShieldSpan.innerText = cpu.shieldHp;
+
     const playerHpBar = document.getElementById('player-hp-bar');
     if (playerHpBar) {
         playerHpBar.style.width = player.hp + '%';
@@ -504,6 +617,15 @@ function updateHUD() {
         if (cpu.hp < 30) cpuHpBar.style.backgroundColor = 'var(--cpu-color)';
         else if (cpu.hp < 60) cpuHpBar.style.backgroundColor = 'var(--primary-color)';
         else cpuHpBar.style.backgroundColor = '#22c55e';
+    }
+
+    const playerShieldBar = document.getElementById('player-shield-bar');
+    if (playerShieldBar) {
+        playerShieldBar.style.width = (player.shieldHp / 50 * 100) + '%';
+    }
+    const cpuShieldBar = document.getElementById('cpu-shield-bar');
+    if (cpuShieldBar) {
+        cpuShieldBar.style.width = (cpu.shieldHp / 50 * 100) + '%';
     }
     
     let turnIndicator = document.getElementById('turn-indicator');
@@ -561,12 +683,14 @@ function updateHUD() {
         }
     }
     // Update Weapon Selector Button States
+    // Update Weapon Selector Button States
     const standardBtn = document.getElementById('weapon-standard');
     const mediumBtn = document.getElementById('weapon-medium');
     const doubleBtn = document.getElementById('weapon-double');
     const ricochetBtn = document.getElementById('weapon-ricochet');
+    const bubbleBtn = document.getElementById('weapon-bubble');
     
-    if (standardBtn && mediumBtn && doubleBtn && ricochetBtn && player) {
+    if (standardBtn && mediumBtn && doubleBtn && ricochetBtn && bubbleBtn && player) {
         // Medium button
         mediumBtn.innerText = `Medium (${player.mediumShots})`;
         if (player.mediumShots <= 0) {
@@ -602,12 +726,25 @@ function updateHUD() {
             ricochetBtn.style.opacity = 1;
             ricochetBtn.style.cursor = 'pointer';
         }
+
+        // Bubble button
+        bubbleBtn.innerText = `Bubble (${player.bubbleShots})`;
+        if (player.bubbleShots <= 0) {
+            bubbleBtn.disabled = true;
+            bubbleBtn.style.opacity = 0.5;
+            bubbleBtn.style.cursor = 'not-allowed';
+        } else {
+            bubbleBtn.disabled = false;
+            bubbleBtn.style.opacity = 1;
+            bubbleBtn.style.cursor = 'pointer';
+        }
         
         // Handle active classes
         standardBtn.classList.remove('active');
         mediumBtn.classList.remove('active');
         doubleBtn.classList.remove('active');
         ricochetBtn.classList.remove('active');
+        bubbleBtn.classList.remove('active');
 
         if (player.selectedWeapon === 'standard') {
             standardBtn.classList.add('active');
@@ -617,6 +754,8 @@ function updateHUD() {
             doubleBtn.classList.add('active');
         } else if (player.selectedWeapon === 'ricochet') {
             ricochetBtn.classList.add('active');
+        } else if (player.selectedWeapon === 'bubble') {
+            bubbleBtn.classList.add('active');
         }
     }
 }
@@ -659,6 +798,51 @@ function drawTrajectory() {
     ctx.setLineDash([]); // Reset dash
 }
 
+let menuFrameCount = 0;
+function drawMenuOverlay() {
+    menuFrameCount++;
+    
+    // Dim background slightly
+    ctx.fillStyle = 'rgba(11, 29, 40, 0.6)';
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    
+    // Draw central retro menu box
+    const boxW = 500;
+    const boxH = 260;
+    const boxX = (WIDTH - boxW) / 2;
+    const boxY = (HEIGHT - boxH) / 2;
+    
+    ctx.fillStyle = '#112233';
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 6;
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.strokeRect(boxX, boxY, boxW, boxH);
+    
+    // Title "CANNON CHAOS"
+    ctx.font = '32px "Press Start 2P", cursive';
+    ctx.fillStyle = 'var(--primary-color)';
+    ctx.textAlign = 'center';
+    ctx.fillText('CANNON CHAOS', WIDTH / 2, boxY + 70);
+    
+    // Subtitle / tagline
+    ctx.font = '14px "Press Start 2P", cursive';
+    ctx.fillStyle = '#00ffcc';
+    ctx.fillText('8-BIT TANK WARFARE', WIDTH / 2, boxY + 120);
+    
+    // Pulsing "PRESS ANY KEY TO PLAY"
+    const pulse = Math.floor(menuFrameCount / 30) % 2 === 0;
+    if (pulse) {
+        ctx.font = '16px "Press Start 2P", cursive';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('PRESS ANY KEY TO PLAY', WIDTH / 2, boxY + 190);
+    }
+    
+    // Footer / Touch notice
+    ctx.font = '10px "Press Start 2P", cursive';
+    ctx.fillStyle = '#aaaaaa';
+    ctx.fillText('(OR TAP / CLICK SCREEN)', WIDTH / 2, boxY + 225);
+}
+
 function gameLoop() {
     // Clear canvas
     ctx.fillStyle = '#87CEEB';
@@ -684,7 +868,11 @@ function gameLoop() {
         }
     }
 
-    if (currentState === GAME_STATE.PLAYING || activeProjectiles.some(p => p.active)) {
+    if (currentState === GAME_STATE.MENU) {
+        drawMenuOverlay();
+    }
+
+    if (currentState === GAME_STATE.PLAYING || currentState === GAME_STATE.MENU || activeProjectiles.some(p => p.active)) {
         requestAnimationFrame(gameLoop);
     } else {
         // Draw one last frame to show game over state
@@ -776,8 +964,34 @@ function setupMobileControls() {
             }
         });
     }
+    const bubbleBtn = document.getElementById('weapon-bubble');
+    if (bubbleBtn) {
+        bubbleBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (currentState !== GAME_STATE.PLAYING || turn !== 0 || activeProjectiles.some(p => p.active)) return;
+            if (player.bubbleShots > 0) {
+                player.selectedWeapon = 'bubble';
+                updateHUD();
+            }
+        });
+    }
 }
 
 // Start
 setupMobileControls();
+
+// Allow clicking or tapping the canvas to start the game when in MENU state
+canvas.addEventListener('click', (e) => {
+    if (currentState === GAME_STATE.MENU) {
+        setGameState(GAME_STATE.PLAYING);
+        updateHUD();
+    }
+});
+canvas.addEventListener('touchstart', (e) => {
+    if (currentState === GAME_STATE.MENU) {
+        setGameState(GAME_STATE.PLAYING);
+        updateHUD();
+    }
+}, { passive: true });
+
 initGame();

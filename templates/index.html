@@ -20,6 +20,8 @@
                 <p>Player 1</p>
                 <p>HP: <span id="player-hp">100</span></p>
                 <div class="hp-bar-container"><div class="hp-bar" id="player-hp-bar"></div></div>
+                <p style="font-size: 11px; margin-top: 4px;">Shield: <span id="player-shield">0</span>/50</p>
+                <div class="hp-bar-container" style="border-color: #00ffff;"><div class="hp-bar" id="player-shield-bar" style="background-color: #00ffff; width: 0%;"></div></div>
             </div>
             
             <div class="game-info" style="display: flex; flex-direction: row; align-items: center; gap: 24px;">
@@ -44,13 +46,21 @@
                         </div>
                     </div>
                 </div>
-                <div class="weapon-selector">
-                    <p style="font-size: 10px; color: #aaa; margin-bottom: 4px; text-transform: uppercase;">Cannon</p>
-                    <div class="weapon-grid">
-                        <button id="weapon-standard" class="btn-weapon active">Standard (∞)</button>
-                        <button id="weapon-medium" class="btn-weapon">Medium (2)</button>
-                        <button id="weapon-double" class="btn-weapon">Double (3)</button>
-                        <button id="weapon-ricochet" class="btn-weapon">Ricochet (3)</button>
+                <div class="weapon-selector" style="display: flex; flex-direction: row; gap: 20px; align-items: flex-start;">
+                    <div class="weapon-section" style="display: flex; flex-direction: column; align-items: center;">
+                        <p style="font-size: 10px; color: #aaa; margin-bottom: 4px; text-transform: uppercase;">Cannon</p>
+                        <div class="weapon-grid">
+                            <button id="weapon-standard" class="btn-weapon active">Standard (∞)</button>
+                            <button id="weapon-medium" class="btn-weapon">Medium (2)</button>
+                            <button id="weapon-double" class="btn-weapon">Double (3)</button>
+                            <button id="weapon-ricochet" class="btn-weapon">Ricochet (3)</button>
+                        </div>
+                    </div>
+                    <div class="weapon-section" style="display: flex; flex-direction: column; align-items: center; border-left: 2px solid #334455; padding-left: 20px;">
+                        <p style="font-size: 10px; color: #aaa; margin-bottom: 4px; text-transform: uppercase;">Shield</p>
+                        <div class="weapon-grid">
+                            <button id="weapon-bubble" class="btn-weapon">Bubble (1)</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -59,6 +69,8 @@
                 <p>Computer</p>
                 <p>HP: <span id="cpu-hp">100</span></p>
                 <div class="hp-bar-container"><div class="hp-bar" id="cpu-hp-bar"></div></div>
+                <p style="font-size: 11px; margin-top: 4px;">Shield: <span id="cpu-shield">0</span>/50</p>
+                <div class="hp-bar-container" style="border-color: #00ffff;"><div class="hp-bar" id="cpu-shield-bar" style="background-color: #00ffff; width: 0%;"></div></div>
             </div>
         </div>
 

@@ -290,3 +290,12 @@ canvas {
     box-shadow: 0px 0px 0px #000;
     transform: translate(2px, 2px);
 }
+
+/* Hide game UI when on the title screen menu */
+.state-menu .hud,
+.state-menu .instructions,
+.state-menu .mobile-controls {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+}
