@@ -291,10 +291,16 @@ canvas {
     transform: translate(2px, 2px);
 }
 
-/* Hide game UI when on the title screen menu */
+/* Hide game UI when on the title screen menu or mode selection */
 .state-menu .hud,
 .state-menu .instructions,
-.state-menu .mobile-controls {
+.state-menu .mobile-controls,
+.state-mode_select .hud,
+.state-mode_select .instructions,
+.state-mode_select .mobile-controls,
+.state-terrain_select .hud,
+.state-terrain_select .instructions,
+.state-terrain_select .mobile-controls {
     visibility: hidden;
     opacity: 0;
     pointer-events: none;

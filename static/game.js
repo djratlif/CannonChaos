@@ -4,9 +4,13 @@ const ctx = canvas.getContext('2d');
 // Game State
 const GAME_STATE = {
     MENU: 'MENU',
+    MODE_SELECT: 'MODE_SELECT',
+    TERRAIN_SELECT: 'TERRAIN_SELECT',
     PLAYING: 'PLAYING',
     GAMEOVER: 'GAMEOVER'
 };
+let selectedModeIndex = 0; // 0 for Quick Play, 1 for Sandbox
+let selectedTerrainIndex = 0; // 0 for Mountains, 1 for Flat
 
 // DEV CONFIG: Set to true to bypass title screen menu during development
 const DEV_SKIP_MENU = false; 
@@ -408,21 +412,59 @@ let player, cpu;
 let activeProjectiles = [];
 
 // Generate 8-bit style terrain
-function generateTerrain() {
+// Generate 8-bit style terrain (either Mountains or Flat)
+function generateTerrain(type = 'mountains') {
     terrain = [];
-    let startY = HEIGHT - 100;
-    for (let x = 0; x <= WIDTH; x += 5) { // 5px blocks
-        terrain.push({x: x, y: startY});
-        if (Math.random() > 0.8) {
-            startY += (Math.random() * 20 - 10);
-            if (startY > HEIGHT - 50) startY = HEIGHT - 50;
-            if (startY < HEIGHT - 200) startY = HEIGHT - 200;
+    let startY = HEIGHT - 120;
+    
+    if (type === 'flat') {
+        // Flat: very minor shifts, low ground level
+        startY = HEIGHT - 100;
+        for (let x = 0; x <= WIDTH; x += 5) {
+            terrain.push({x: x, y: startY});
+            if (Math.random() > 0.95) {
+                startY += (Math.random() * 4 - 2); // very small bumps
+                if (startY > HEIGHT - 80) startY = HEIGHT - 80;
+                if (startY < HEIGHT - 120) startY = HEIGHT - 120;
+            }
+        }
+    } else {
+        // Mountains: steep slopes and high peaks
+        startY = HEIGHT - 150;
+        let slope = 0;
+        for (let x = 0; x <= WIDTH; x += 5) {
+            terrain.push({x: x, y: startY});
+            if (Math.random() > 0.8) {
+                slope += (Math.random() * 12 - 6);
+                slope = Math.max(-15, Math.min(15, slope));
+            }
+            startY += slope;
+            if (startY > HEIGHT - 60) {
+                startY = HEIGHT - 60;
+                slope = -Math.abs(slope) * 0.5;
+            }
+            if (startY < HEIGHT - 350) {
+                startY = HEIGHT - 350;
+                slope = Math.abs(slope) * 0.5;
+            }
         }
     }
 }
 
+function startGamePlay(terrainType) {
+    generateTerrain(terrainType);
+    player = new Tank(100, '#3b82f6', true);
+    cpu = new Tank(WIDTH - 100, '#ef4444', false);
+    turn = 0;
+    previousTrajectory = [];
+    activeProjectiles = [];
+    setGameState(GAME_STATE.PLAYING);
+    updateHUD();
+}
+
 function initGame() {
-    generateTerrain();
+    // Generate standard mountains initially as a placeholder before mode/terrain selects
+    generateTerrain('mountains');
     player = new Tank(100, '#3b82f6', true);
     cpu = new Tank(WIDTH - 100, '#ef4444', false);
     turn = 0;
@@ -455,8 +497,35 @@ const touchKeys = {
 
 window.addEventListener('keydown', (e) => {
     if (currentState === GAME_STATE.MENU) {
-        setGameState(GAME_STATE.PLAYING);
+        setGameState(GAME_STATE.MODE_SELECT);
         updateHUD();
+        return;
+    }
+    if (currentState === GAME_STATE.MODE_SELECT) {
+        if (e.code === 'ArrowUp') {
+            selectedModeIndex = 0;
+        }
+        if (e.code === 'ArrowDown') {
+            selectedModeIndex = 1;
+        }
+        if (e.code === 'Space' || e.code === 'Enter') {
+            if (selectedModeIndex === 0) {
+                setGameState(GAME_STATE.TERRAIN_SELECT);
+                updateHUD();
+            }
+        }
+        return;
+    }
+    if (currentState === GAME_STATE.TERRAIN_SELECT) {
+        if (e.code === 'ArrowUp') {
+            selectedTerrainIndex = 0;
+        }
+        if (e.code === 'ArrowDown') {
+            selectedTerrainIndex = 1;
+        }
+        if (e.code === 'Space' || e.code === 'Enter') {
+            startGamePlay(selectedTerrainIndex === 0 ? 'mountains' : 'flat');
+        }
         return;
     }
     if (currentState !== GAME_STATE.PLAYING || turn !== 0 || activeProjectiles.some(p => p.active)) return;
@@ -634,7 +703,7 @@ function updateHUD() {
         turnIndicator.style.animation = "none";
         turnIndicator.style.color = player.hp > 0 ? "var(--player-color)" : "var(--cpu-color)";
     } else {
-        turnIndicator.innerText = turn === 0 ? "Player's Turn" : "Computer's Turn";
+        turnIndicator.innerText = turn === 0 ? "Player's Turn" : "CPU's Turn";
         turnIndicator.style.color = turn === 0 ? "var(--player-color)" : "var(--cpu-color)";
         turnIndicator.style.animation = "blink 1.5s infinite";
     }
@@ -870,9 +939,13 @@ function gameLoop() {
 
     if (currentState === GAME_STATE.MENU) {
         drawMenuOverlay();
+    } else if (currentState === GAME_STATE.MODE_SELECT) {
+        drawModeSelectOverlay();
+    } else if (currentState === GAME_STATE.TERRAIN_SELECT) {
+        drawTerrainSelectOverlay();
     }
 
-    if (currentState === GAME_STATE.PLAYING || currentState === GAME_STATE.MENU || activeProjectiles.some(p => p.active)) {
+    if (currentState === GAME_STATE.PLAYING || currentState === GAME_STATE.MENU || currentState === GAME_STATE.MODE_SELECT || currentState === GAME_STATE.TERRAIN_SELECT || activeProjectiles.some(p => p.active)) {
         requestAnimationFrame(gameLoop);
     } else {
         // Draw one last frame to show game over state
@@ -880,6 +953,102 @@ function gameLoop() {
         player.draw();
         cpu.draw();
     }
+}
+
+function drawTerrainSelectOverlay() {
+    // Dim background slightly
+    ctx.fillStyle = 'rgba(11, 29, 40, 0.6)';
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    
+    // Draw central retro menu box
+    const boxW = 500;
+    const boxH = 260;
+    const boxX = (WIDTH - boxW) / 2;
+    const boxY = (HEIGHT - boxH) / 2;
+    
+    ctx.fillStyle = '#112233';
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 6;
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.strokeRect(boxX, boxY, boxW, boxH);
+    
+    // Header
+    ctx.font = '24px "Press Start 2P", cursive';
+    ctx.fillStyle = 'var(--primary-color)';
+    ctx.textAlign = 'center';
+    ctx.fillText('SELECT TERRAIN', WIDTH / 2, boxY + 50);
+    
+    // Options
+    ctx.font = '16px "Press Start 2P", cursive';
+    
+    // Option 1: Mountains
+    ctx.fillStyle = selectedTerrainIndex === 0 ? '#00ffcc' : '#ffffff';
+    let opt1Text = 'MOUNTAINS';
+    if (selectedTerrainIndex === 0) {
+        opt1Text = '▶ MOUNTAINS';
+    }
+    ctx.fillText(opt1Text, WIDTH / 2, boxY + 110);
+    
+    // Option 2: Flat
+    ctx.fillStyle = selectedTerrainIndex === 1 ? '#00ffcc' : '#ffffff';
+    let opt2Text = 'FLAT';
+    if (selectedTerrainIndex === 1) {
+        opt2Text = '▶ FLAT';
+    }
+    ctx.fillText(opt2Text, WIDTH / 2, boxY + 170);
+    
+    // Navigation info
+    ctx.font = '10px "Press Start 2P", cursive';
+    ctx.fillStyle = '#aaaaaa';
+    ctx.fillText('USE ARROWS TO SELECT, SPACE / CLICK TO PLAY', WIDTH / 2, boxY + 230);
+}
+
+function drawModeSelectOverlay() {
+    // Dim background slightly
+    ctx.fillStyle = 'rgba(11, 29, 40, 0.6)';
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    
+    // Draw central retro menu box
+    const boxW = 500;
+    const boxH = 260;
+    const boxX = (WIDTH - boxW) / 2;
+    const boxY = (HEIGHT - boxH) / 2;
+    
+    ctx.fillStyle = '#112233';
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 6;
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.strokeRect(boxX, boxY, boxW, boxH);
+    
+    // Header
+    ctx.font = '24px "Press Start 2P", cursive';
+    ctx.fillStyle = 'var(--primary-color)';
+    ctx.textAlign = 'center';
+    ctx.fillText('SELECT MODE', WIDTH / 2, boxY + 50);
+    
+    // Options
+    ctx.font = '16px "Press Start 2P", cursive';
+    
+    // Option 1: Quick Play
+    ctx.fillStyle = selectedModeIndex === 0 ? '#00ffcc' : '#ffffff';
+    let opt1Text = 'QUICK PLAY';
+    if (selectedModeIndex === 0) {
+        opt1Text = '▶ QUICK PLAY';
+    }
+    ctx.fillText(opt1Text, WIDTH / 2, boxY + 110);
+    
+    // Option 2: Sandbox
+    ctx.fillStyle = selectedModeIndex === 1 ? '#ef4444' : '#888888';
+    let opt2Text = 'SANDBOX (COMING SOON)';
+    if (selectedModeIndex === 1) {
+        opt2Text = '▶ SANDBOX (COMING SOON)';
+    }
+    ctx.fillText(opt2Text, WIDTH / 2, boxY + 170);
+    
+    // Navigation info
+    ctx.font = '10px "Press Start 2P", cursive';
+    ctx.fillStyle = '#aaaaaa';
+    ctx.fillText('USE ARROWS TO SELECT, SPACE / CLICK TO PLAY', WIDTH / 2, boxY + 230);
 }
 
 function setupMobileControls() {
@@ -980,18 +1149,53 @@ function setupMobileControls() {
 // Start
 setupMobileControls();
 
-// Allow clicking or tapping the canvas to start the game when in MENU state
+// Allow clicking or tapping the canvas to navigate the menus
 canvas.addEventListener('click', (e) => {
     if (currentState === GAME_STATE.MENU) {
-        setGameState(GAME_STATE.PLAYING);
+        setGameState(GAME_STATE.MODE_SELECT);
         updateHUD();
+        return;
+    }
+    
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const clickX = (e.clientX - rect.left) * scaleX;
+    const clickY = (e.clientY - rect.top) * scaleY;
+    
+    const boxW = 500;
+    const boxH = 260;
+    const boxX = (WIDTH - boxW) / 2;
+    const boxY = (HEIGHT - boxH) / 2;
+    
+    if (currentState === GAME_STATE.MODE_SELECT) {
+        if (clickX >= boxX && clickX <= boxX + boxW) {
+            // Quick Play boundary
+            if (clickY >= boxY + 80 && clickY <= boxY + 130) {
+                selectedModeIndex = 0;
+                setGameState(GAME_STATE.TERRAIN_SELECT);
+                updateHUD();
+            }
+            // Sandbox boundary
+            else if (clickY >= boxY + 140 && clickY <= boxY + 200) {
+                selectedModeIndex = 1;
+                // Coming soon
+            }
+        }
+    } else if (currentState === GAME_STATE.TERRAIN_SELECT) {
+        if (clickX >= boxX && clickX <= boxX + boxW) {
+            // Mountains boundary
+            if (clickY >= boxY + 80 && clickY <= boxY + 130) {
+                selectedTerrainIndex = 0;
+                startGamePlay('mountains');
+            }
+            // Flat boundary
+            else if (clickY >= boxY + 140 && clickY <= boxY + 200) {
+                selectedTerrainIndex = 1;
+                startGamePlay('flat');
+            }
+        }
     }
 });
-canvas.addEventListener('touchstart', (e) => {
-    if (currentState === GAME_STATE.MENU) {
-        setGameState(GAME_STATE.PLAYING);
-        updateHUD();
-    }
-}, { passive: true });
 
 initGame();
