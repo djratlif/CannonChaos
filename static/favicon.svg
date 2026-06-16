@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Cannon Barrel pointing up and right -->
+  <rect x="14" y="4" width="5" height="15" fill="#333333" rx="1" transform="rotate(45, 16, 18)" />
+  
+  <!-- Blue Triangular Tank Body -->
+  <polygon points="16,8 5,25 27,25" fill="#3b82f6" stroke="#1d4ed8" stroke-width="1.5" />
+</svg>
