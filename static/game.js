@@ -108,6 +108,7 @@ class Tank {
         this.doubleShots = 3;
         this.ricochetShots = 3;
         this.bubbleShots = 1;
+        this.nukeShots = 1;
         this.shieldHp = 0;
     }
 
@@ -347,9 +348,9 @@ class Projectile {
             cpuLastTrajectory = [...this.path];
         }
         
-        // Destroy terrain at impact point (medium crater is 45, standard is 25)
-        const craterRadius = this.type === 'medium' ? 45 : 25;
-        destroyTerrain(this.x, this.y, craterRadius);
+        // Spawn active explosion instead of destroying terrain immediately
+        const craterRadius = this.type === 'nuke' ? 90 : (this.type === 'medium' ? 45 : 25);
+        activeExplosions.push(new Explosion(this.x, this.y, craterRadius, this.type, this.ownerIsPlayer));
 
         // Distance feedback calculation
         const target = this.ownerIsPlayer ? cpu : player;
@@ -357,21 +358,21 @@ class Projectile {
         const dy = this.y - (target.y + 7);
         const distance = Math.round(Math.sqrt(dx * dx + dy * dy));
 
+        // Duration of feedback should account for the explosion animation time
+        const explosionDuration = this.type === 'nuke' ? 60 : 20;
         distanceFeedback = {
             x: this.x,
             y: this.y - 25,
             distance: distance,
             ownerIsPlayer: this.ownerIsPlayer,
-            timer: 120 // 2 seconds at 60fps
+            timer: 120 + explosionDuration
         };
 
         cameraFocusOverride = {
             x: this.x,
             y: this.y,
-            duration: 120
+            duration: 120 + explosionDuration
         };
-
-        checkTurnTransition(2000); // 2 second delay
     }
 
     draw() {
@@ -383,9 +384,112 @@ class Projectile {
     }
 }
 
+class Explosion {
+    constructor(x, y, radius, type, ownerIsPlayer) {
+        this.x = x;
+        this.y = y;
+        this.maxRadius = radius;
+        this.currentRadius = 0;
+        this.type = type;
+        this.ownerIsPlayer = ownerIsPlayer;
+        this.duration = type === 'nuke' ? 60 : 20; // Nuke is a longer explosion
+        this.elapsed = 0;
+        this.done = false;
+    }
+
+    update() {
+        this.elapsed++;
+        // Ease out quadratic
+        const t = this.elapsed / this.duration;
+        this.currentRadius = this.maxRadius * (1 - (1 - t) * (1 - t));
+        
+        if (this.elapsed >= this.duration) {
+            this.done = true;
+            
+            // Actually destroy terrain at the end of the animation!
+            destroyTerrain(this.x, this.y, this.maxRadius);
+            
+            // Proximity damage to other tanks (for Nuke)
+            if (this.type === 'nuke') {
+                [player, cpu].forEach(tank => {
+                    const dx = this.x - tank.x;
+                    const dy = this.y - (tank.y + 7);
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < this.maxRadius) {
+                        const pct = 1 - (dist / this.maxRadius);
+                        const dmg = Math.floor(45 * pct); // up to 45 splash damage
+                        if (dmg > 0) {
+                            if (tank.shieldHp > 0) {
+                                if (tank.shieldHp >= dmg) {
+                                    tank.shieldHp -= dmg;
+                                } else {
+                                    tank.hp -= (dmg - tank.shieldHp);
+                                    tank.shieldHp = 0;
+                                }
+                            } else {
+                                tank.hp -= dmg;
+                            }
+                            if (tank.hp < 0) tank.hp = 0;
+                        }
+                    }
+                });
+                updateHUD();
+            }
+            
+            // Trigger the delayed turn switch after the explosion settles
+            checkTurnTransition(2000);
+        }
+    }
+
+    draw() {
+        const t = this.elapsed / this.duration;
+        const opacity = 1 - t;
+        
+        ctx.save();
+        
+        if (this.type === 'nuke') {
+            // Draw a growing pixelated mushroom cloud / plasma sphere
+            // Outer cloud outline
+            ctx.fillStyle = `rgba(255, 60, 0, ${opacity * 0.75})`;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.currentRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Middle fire layer
+            ctx.fillStyle = `rgba(255, 150, 0, ${opacity * 0.85})`;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.currentRadius * 0.7, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Inner nuclear core
+            ctx.fillStyle = `rgba(255, 255, 200, ${opacity})`;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.currentRadius * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw some shockwave debris/lines
+            ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
+            ctx.lineWidth = 3;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.currentRadius * 0.85, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        } else {
+            // Standard / Medium explosion
+            ctx.fillStyle = `rgba(255, ${Math.floor(100 + 155 * (1-t))}, 0, ${opacity})`;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.currentRadius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+
 function checkTurnTransition(delayMs = 0) {
     if (currentState !== GAME_STATE.PLAYING) return;
-    const anyActive = activeProjectiles.some(p => p.active);
+    const anyActive = activeProjectiles.some(p => p.active) || activeExplosions.length > 0;
     const anyFalling = player.isFalling || cpu.isFalling;
     if (!anyActive && !anyFalling) {
         if (player.hp <= 0 || cpu.hp <= 0) {
@@ -478,6 +582,7 @@ function updateTankPositions() {
 
 let player, cpu;
 let activeProjectiles = [];
+let activeExplosions = [];
 
 // Generate 8-bit style terrain
 // Generate 8-bit style terrain (either Mountains or Flat)
@@ -533,6 +638,7 @@ function startGamePlay(terrainType) {
     camera.targetX = 0;
     camera.targetY = 0;
     activeProjectiles = [];
+    activeExplosions = [];
     setGameState(GAME_STATE.PLAYING);
     updateHUD();
 }
@@ -557,6 +663,7 @@ function initGame() {
     camera.targetX = 0;
     camera.targetY = 0;
     activeProjectiles = [];
+    activeExplosions = [];
     updateHUD();
     gameLoop();
 }
@@ -677,6 +784,11 @@ function fireProjectile(tank) {
         } else if (weaponType === 'ricochet') {
             tank.ricochetShots--;
             if (tank.ricochetShots <= 0) {
+                tank.selectedWeapon = 'standard';
+            }
+        } else if (weaponType === 'nuke') {
+            tank.nukeShots--;
+            if (tank.nukeShots <= 0) {
                 tank.selectedWeapon = 'standard';
             }
         } else if (weaponType === 'bubble') {
@@ -855,8 +967,9 @@ function updateHUD() {
     const doubleBtn = document.getElementById('weapon-double');
     const ricochetBtn = document.getElementById('weapon-ricochet');
     const bubbleBtn = document.getElementById('weapon-bubble');
+    const nukeBtn = document.getElementById('weapon-nuke');
     
-    if (standardBtn && mediumBtn && doubleBtn && ricochetBtn && bubbleBtn && player) {
+    if (standardBtn && mediumBtn && doubleBtn && ricochetBtn && bubbleBtn && nukeBtn && player) {
         // Medium button
         mediumBtn.innerText = `Medium (${player.mediumShots})`;
         if (player.mediumShots <= 0) {
@@ -904,6 +1017,18 @@ function updateHUD() {
             bubbleBtn.style.opacity = 1;
             bubbleBtn.style.cursor = 'pointer';
         }
+
+        // Nuke button
+        nukeBtn.innerText = `Nuke (${player.nukeShots})`;
+        if (player.nukeShots <= 0) {
+            nukeBtn.disabled = true;
+            nukeBtn.style.opacity = 0.5;
+            nukeBtn.style.cursor = 'not-allowed';
+        } else {
+            nukeBtn.disabled = false;
+            nukeBtn.style.opacity = 1;
+            nukeBtn.style.cursor = 'pointer';
+        }
         
         // Handle active classes
         standardBtn.classList.remove('active');
@@ -911,6 +1036,7 @@ function updateHUD() {
         doubleBtn.classList.remove('active');
         ricochetBtn.classList.remove('active');
         bubbleBtn.classList.remove('active');
+        nukeBtn.classList.remove('active');
 
         if (player.selectedWeapon === 'standard') {
             standardBtn.classList.add('active');
@@ -922,6 +1048,8 @@ function updateHUD() {
             ricochetBtn.classList.add('active');
         } else if (player.selectedWeapon === 'bubble') {
             bubbleBtn.classList.add('active');
+        } else if (player.selectedWeapon === 'nuke') {
+            nukeBtn.classList.add('active');
         }
     }
 }
@@ -1206,6 +1334,15 @@ function gameLoop() {
         }
     }
 
+    for (let i = activeExplosions.length - 1; i >= 0; i--) {
+        const exp = activeExplosions[i];
+        exp.update();
+        exp.draw();
+        if (exp.done) {
+            activeExplosions.splice(i, 1);
+        }
+    }
+
     // Draw distance feedback and line to target if active
     if (distanceFeedback && distanceFeedback.timer > 0) {
         const target = distanceFeedback.ownerIsPlayer ? cpu : player;
@@ -1456,6 +1593,17 @@ function setupMobileControls() {
             if (currentState !== GAME_STATE.PLAYING || turn !== 0 || activeProjectiles.some(p => p.active)) return;
             if (player.bubbleShots > 0) {
                 player.selectedWeapon = 'bubble';
+                updateHUD();
+            }
+        });
+    }
+    const nukeBtn = document.getElementById('weapon-nuke');
+    if (nukeBtn) {
+        nukeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (currentState !== GAME_STATE.PLAYING || turn !== 0 || activeProjectiles.some(p => p.active)) return;
+            if (player.nukeShots > 0) {
+                player.selectedWeapon = 'nuke';
                 updateHUD();
             }
         });
