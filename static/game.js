@@ -64,6 +64,10 @@ let turn = 0; // 0 for Player, 1 for CPU
 let playerLastTrajectory = [];
 let cpuLastTrajectory = [];
 
+let cameraFocusOverride = null;
+let distanceFeedback = null;
+let turnTransitionTimeout = null;
+
 class Tank {
     constructor(x, color, isPlayer) {
         this.x = x;
@@ -347,7 +351,27 @@ class Projectile {
         const craterRadius = this.type === 'medium' ? 45 : 25;
         destroyTerrain(this.x, this.y, craterRadius);
 
-        checkTurnTransition();
+        // Distance feedback calculation
+        const target = this.ownerIsPlayer ? cpu : player;
+        const dx = this.x - target.x;
+        const dy = this.y - (target.y + 7);
+        const distance = Math.round(Math.sqrt(dx * dx + dy * dy));
+
+        distanceFeedback = {
+            x: this.x,
+            y: this.y - 25,
+            distance: distance,
+            ownerIsPlayer: this.ownerIsPlayer,
+            timer: 120 // 2 seconds at 60fps
+        };
+
+        cameraFocusOverride = {
+            x: this.x,
+            y: this.y,
+            duration: 120
+        };
+
+        checkTurnTransition(2000); // 2 second delay
     }
 
     draw() {
@@ -359,23 +383,37 @@ class Projectile {
     }
 }
 
-function checkTurnTransition() {
+function checkTurnTransition(delayMs = 0) {
     if (currentState !== GAME_STATE.PLAYING) return;
     const anyActive = activeProjectiles.some(p => p.active);
     const anyFalling = player.isFalling || cpu.isFalling;
     if (!anyActive && !anyFalling) {
         if (player.hp <= 0 || cpu.hp <= 0) {
+            if (turnTransitionTimeout) clearTimeout(turnTransitionTimeout);
             setGameState(GAME_STATE.GAMEOVER);
             updateHUD();
+            return;
+        }
+
+        if (delayMs > 0) {
+            if (turnTransitionTimeout) clearTimeout(turnTransitionTimeout);
+            turnTransitionTimeout = setTimeout(() => {
+                if (currentState !== GAME_STATE.PLAYING) return;
+                performTurnTransition();
+            }, delayMs);
         } else {
-            // Next Turn
-            turn = turn === 0 ? 1 : 0;
-            if (turn === 1) {
-                setTimeout(cpuTurn, 1000);
-            }
-            updateHUD();
+            if (turnTransitionTimeout) clearTimeout(turnTransitionTimeout);
+            performTurnTransition();
         }
     }
+}
+
+function performTurnTransition() {
+    turn = turn === 0 ? 1 : 0;
+    if (turn === 1) {
+        setTimeout(cpuTurn, 1000);
+    }
+    updateHUD();
 }
 
 function destroyTerrain(impactX, impactY, radius) {
@@ -950,18 +988,30 @@ function updateCamera() {
 
     let targetX = 0;
     let targetY = 0;
-    const activeProj = activeProjectiles.find(p => p.active);
-    if (activeProj) {
-        targetX = activeProj.x - VIEW_WIDTH / 2;
-        // Pan camera upwards to follow high-flying projectile
-        targetY = activeProj.y - HEIGHT / 2;
-        targetY = Math.min(0, targetY); // Only pan upwards, do not show area below the ground level
+
+    if (cameraFocusOverride) {
+        targetX = cameraFocusOverride.x - VIEW_WIDTH / 2;
+        targetY = cameraFocusOverride.y - HEIGHT / 2;
+        targetY = Math.min(0, targetY);
+
+        cameraFocusOverride.duration--;
+        if (cameraFocusOverride.duration <= 0) {
+            cameraFocusOverride = null;
+        }
     } else {
-        const activeTank = (turn === 0) ? player : cpu;
-        if (activeTank) {
-            targetX = activeTank.x - VIEW_WIDTH / 2;
-            targetY = activeTank.y - HEIGHT / 2;
-            targetY = Math.min(0, targetY);
+        const activeProj = activeProjectiles.find(p => p.active);
+        if (activeProj) {
+            targetX = activeProj.x - VIEW_WIDTH / 2;
+            // Pan camera upwards to follow high-flying projectile
+            targetY = activeProj.y - HEIGHT / 2;
+            targetY = Math.min(0, targetY); // Only pan upwards, do not show area below the ground level
+        } else {
+            const activeTank = (turn === 0) ? player : cpu;
+            if (activeTank) {
+                targetX = activeTank.x - VIEW_WIDTH / 2;
+                targetY = activeTank.y - HEIGHT / 2;
+                targetY = Math.min(0, targetY);
+            }
         }
     }
 
@@ -1151,6 +1201,43 @@ function gameLoop() {
             proj.draw();
         } else {
             activeProjectiles.splice(i, 1);
+        }
+    }
+
+    // Draw distance feedback and line to target if active
+    if (distanceFeedback && distanceFeedback.timer > 0) {
+        const target = distanceFeedback.ownerIsPlayer ? cpu : player;
+        
+        // Draw dotted line between hit spot and target tank
+        ctx.strokeStyle = distanceFeedback.ownerIsPlayer ? 'rgba(59, 130, 246, 0.4)' : 'rgba(239, 68, 68, 0.4)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(distanceFeedback.x, distanceFeedback.y + 25);
+        ctx.lineTo(target.x, target.y + 7);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // Draw retro styled floating text
+        ctx.font = '10px "Press Start 2P", cursive';
+        ctx.textAlign = 'center';
+        
+        const text = `${distanceFeedback.distance}px`;
+        
+        // Text Shadow/Outline
+        ctx.fillStyle = '#000000';
+        ctx.fillText(text, distanceFeedback.x - 1, distanceFeedback.y - 1);
+        ctx.fillText(text, distanceFeedback.x + 1, distanceFeedback.y - 1);
+        ctx.fillText(text, distanceFeedback.x - 1, distanceFeedback.y + 1);
+        ctx.fillText(text, distanceFeedback.x + 1, distanceFeedback.y + 1);
+        
+        // Text Foreground
+        ctx.fillStyle = distanceFeedback.ownerIsPlayer ? '#3b82f6' : '#ef4444';
+        ctx.fillText(text, distanceFeedback.x, distanceFeedback.y);
+        
+        distanceFeedback.timer--;
+        if (distanceFeedback.timer <= 0) {
+            distanceFeedback = null;
         }
     }
 
