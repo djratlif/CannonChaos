@@ -116,6 +116,7 @@ class Tank {
         this.ricochetShots = 3;
         this.bubbleShots = 1;
         this.nukeShots = 1;
+        this.crazyDaveShots = 2;
         this.shieldHp = 0;
     }
 
@@ -228,6 +229,8 @@ class Projectile {
         this.path = []; // Store path for trajectory drawing
         this.hasSplit = false;
         this.ricochetCount = 0;
+        this.splitCount = 0;
+        this.splitTimer = 15;
     }
 
     update() {
@@ -257,6 +260,37 @@ class Projectile {
             
             activeProjectiles.push(child1, child2);
             return;
+        }
+
+        // Crazy Dave mitosis splitting logic
+        if (this.type === 'crazydave' && this.vy > 0) {
+            if (this.splitCount < 3) {
+                if (this.splitTimer > 0) {
+                    this.splitTimer--;
+                } else {
+                    this.splitTimer = 15;
+                    const nextSplitCount = this.splitCount + 1;
+                    const nextType = nextSplitCount === 3 ? 'ricochet' : 'crazydave';
+                    
+                    const child1 = new Projectile(this.x, this.y, 0, 0, this.ownerIsPlayer, nextType);
+                    child1.vx = this.vx + 1.2;
+                    child1.vy = this.vy;
+                    child1.splitCount = nextSplitCount;
+                    child1.splitTimer = 15;
+                    child1.path = [...this.path];
+                    
+                    const child2 = new Projectile(this.x, this.y, 0, 0, this.ownerIsPlayer, nextType);
+                    child2.vx = this.vx - 1.2;
+                    child2.vy = this.vy;
+                    child2.splitCount = nextSplitCount;
+                    child2.splitTimer = 15;
+                    child2.path = [...this.path];
+                    
+                    activeProjectiles.push(child1, child2);
+                    this.active = false;
+                    return;
+                }
+            }
         }
 
         // Bounce off left/right walls
@@ -454,6 +488,16 @@ class Projectile {
             ctx.fill();
             
             ctx.restore();
+        } else if (this.type === 'crazydave') {
+            ctx.fillStyle = Math.floor(Date.now() / 80) % 2 === 0 ? '#eab308' : '#ef4444'; // fast flashing yellow/red
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 6, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw a small outline to make it stand out
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1;
+            ctx.stroke();
         } else {
             ctx.fillStyle = '#000';
             ctx.beginPath();
@@ -926,6 +970,11 @@ function fireProjectile(tank) {
             if (tank.nukeShots <= 0) {
                 tank.selectedWeapon = 'standard';
             }
+        } else if (weaponType === 'crazydave') {
+            tank.crazyDaveShots--;
+            if (tank.crazyDaveShots <= 0) {
+                tank.selectedWeapon = 'standard';
+            }
         } else if (weaponType === 'bubble') {
             tank.bubbleShots--;
             tank.shieldHp = 50;
@@ -1198,6 +1247,21 @@ function updateHUD() {
             nukeBtn.style.opacity = 1;
             nukeBtn.style.cursor = 'pointer';
         }
+
+        // Crazy Dave button
+        const crazyDaveBtn = document.getElementById('weapon-crazydave');
+        if (crazyDaveBtn) {
+            crazyDaveBtn.innerText = `Crazy Dave (${player.crazyDaveShots})`;
+            if (player.crazyDaveShots <= 0) {
+                crazyDaveBtn.disabled = true;
+                crazyDaveBtn.style.opacity = 0.5;
+                crazyDaveBtn.style.cursor = 'not-allowed';
+            } else {
+                crazyDaveBtn.disabled = false;
+                crazyDaveBtn.style.opacity = 1;
+                crazyDaveBtn.style.cursor = 'pointer';
+            }
+        }
         
         // Handle active classes
         standardBtn.classList.remove('active');
@@ -1206,6 +1270,7 @@ function updateHUD() {
         ricochetBtn.classList.remove('active');
         bubbleBtn.classList.remove('active');
         nukeBtn.classList.remove('active');
+        if (crazyDaveBtn) crazyDaveBtn.classList.remove('active');
 
         if (player.selectedWeapon === 'standard') {
             standardBtn.classList.add('active');
@@ -1219,6 +1284,8 @@ function updateHUD() {
             bubbleBtn.classList.add('active');
         } else if (player.selectedWeapon === 'nuke') {
             nukeBtn.classList.add('active');
+        } else if (player.selectedWeapon === 'crazydave' && crazyDaveBtn) {
+            crazyDaveBtn.classList.add('active');
         }
     }
 }
@@ -1873,6 +1940,17 @@ function setupMobileControls() {
             if (currentState !== GAME_STATE.PLAYING || turn !== 0 || activeProjectiles.some(p => p.active)) return;
             if (player.nukeShots > 0) {
                 player.selectedWeapon = 'nuke';
+                updateHUD();
+            }
+        });
+    }
+    const crazyDaveBtn = document.getElementById('weapon-crazydave');
+    if (crazyDaveBtn) {
+        crazyDaveBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (currentState !== GAME_STATE.PLAYING || turn !== 0 || activeProjectiles.some(p => p.active)) return;
+            if (player.crazyDaveShots > 0) {
+                player.selectedWeapon = 'crazydave';
                 updateHUD();
             }
         });
