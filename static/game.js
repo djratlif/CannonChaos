@@ -556,7 +556,11 @@ function checkTurnTransition(delayMs = 0) {
             if (turnTransitionTimeout) clearTimeout(turnTransitionTimeout);
             turnTransitionTimeout = setTimeout(() => {
                 if (currentState !== GAME_STATE.PLAYING) return;
-                performTurnTransition();
+                const stillActive = activeProjectiles.some(p => p.active) || activeExplosions.some(e => !e.done);
+                const stillFalling = player.isFalling || cpu.isFalling;
+                if (!stillActive && !stillFalling) {
+                    performTurnTransition();
+                }
             }, delayMs);
         } else {
             if (turnTransitionTimeout) clearTimeout(turnTransitionTimeout);
