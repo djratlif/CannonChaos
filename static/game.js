@@ -308,7 +308,7 @@ class Projectile {
                     } else {
                         target.shieldHp -= damage;
                         if (target.shieldHp < 0) target.shieldHp = 0;
-                        this.explode();
+                        this.explode(target);
                     }
                     updateHUD();
                     return; // Handled by shield
@@ -334,13 +334,13 @@ class Projectile {
                     const damage = this.type === 'medium' ? 40 : 25;
                     target.hp -= damage;
                     if (target.hp < 0) target.hp = 0;
-                    this.explode();
+                    this.explode(target);
                 }
             }
         }
     }
 
-    explode() {
+    explode(directHitTank = null) {
         this.active = false;
         if (this.ownerIsPlayer) {
             playerLastTrajectory = [...this.path];
@@ -350,7 +350,7 @@ class Projectile {
         
         // Spawn active explosion instead of destroying terrain immediately
         const craterRadius = this.type === 'nuke' ? 90 : (this.type === 'medium' ? 45 : 25);
-        activeExplosions.push(new Explosion(this.x, this.y, craterRadius, this.type, this.ownerIsPlayer));
+        activeExplosions.push(new Explosion(this.x, this.y, craterRadius, this.type, this.ownerIsPlayer, directHitTank));
 
         // Distance feedback calculation
         const target = this.ownerIsPlayer ? cpu : player;
@@ -421,7 +421,7 @@ class Projectile {
 }
 
 class Explosion {
-    constructor(x, y, radius, type, ownerIsPlayer) {
+    constructor(x, y, radius, type, ownerIsPlayer, directHitTank = null) {
         this.x = x;
         this.y = y;
         this.maxRadius = radius;
@@ -431,6 +431,7 @@ class Explosion {
         this.duration = type === 'nuke' ? 60 : 20; // Nuke is a longer explosion
         this.elapsed = 0;
         this.done = false;
+        this.directHitTank = directHitTank;
     }
 
     update() {
@@ -445,32 +446,38 @@ class Explosion {
             // Actually destroy terrain at the end of the animation!
             destroyTerrain(this.x, this.y, this.maxRadius);
             
-            // Proximity damage to other tanks (for Nuke)
-            if (this.type === 'nuke') {
-                [player, cpu].forEach(tank => {
-                    const dx = this.x - tank.x;
-                    const dy = this.y - (tank.y + 7);
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < this.maxRadius) {
-                        const pct = 1 - (dist / this.maxRadius);
-                        const dmg = Math.floor(45 * pct); // up to 45 splash damage
-                        if (dmg > 0) {
-                            if (tank.shieldHp > 0) {
-                                if (tank.shieldHp >= dmg) {
-                                    tank.shieldHp -= dmg;
-                                } else {
-                                    tank.hp -= (dmg - tank.shieldHp);
-                                    tank.shieldHp = 0;
-                                }
-                            } else {
-                                tank.hp -= dmg;
-                            }
-                            if (tank.hp < 0) tank.hp = 0;
-                        }
+            // Proximity damage to other tanks (for all weapons, scaled by distance to center)
+            [player, cpu].forEach(tank => {
+                if (this.directHitTank === tank) return; // Prevent double damage for direct hit
+
+                const dx = this.x - tank.x;
+                const dy = this.y - (tank.y + 7);
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < this.maxRadius) {
+                    const pct = 1 - (dist / this.maxRadius);
+                    let maxDmg = 25;
+                    if (this.type === 'nuke') {
+                        maxDmg = 45;
+                    } else if (this.type === 'medium') {
+                        maxDmg = 40;
                     }
-                });
-                updateHUD();
-            }
+                    const dmg = Math.floor(maxDmg * pct);
+                    if (dmg > 0) {
+                        if (tank.shieldHp > 0) {
+                            if (tank.shieldHp >= dmg) {
+                                tank.shieldHp -= dmg;
+                            } else {
+                                tank.hp -= (dmg - tank.shieldHp);
+                                tank.shieldHp = 0;
+                            }
+                        } else {
+                            tank.hp -= dmg;
+                        }
+                        if (tank.hp < 0) tank.hp = 0;
+                    }
+                }
+            });
+            updateHUD();
             
             // Trigger the delayed turn switch after the explosion settles
             checkTurnTransition(2000);
@@ -895,7 +902,7 @@ function cpuTurn() {
 
 // Intercept explode to update CPU AI logic
 const originalExplode = Projectile.prototype.explode;
-Projectile.prototype.explode = function() {
+Projectile.prototype.explode = function(directHitTank) {
     if (!this.ownerIsPlayer) {
         // CPU shot landed at this.x
         // Player is at player.x
@@ -906,7 +913,7 @@ Projectile.prototype.explode = function() {
             cpu.lastShotTooShort = false;
         }
     }
-    originalExplode.call(this);
+    originalExplode.call(this, directHitTank);
 };
 
 function updateHUD() {
