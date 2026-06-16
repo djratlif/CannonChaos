@@ -525,7 +525,7 @@ class Explosion {
 
 function checkTurnTransition(delayMs = 0) {
     if (currentState !== GAME_STATE.PLAYING) return;
-    const anyActive = activeProjectiles.some(p => p.active) || activeExplosions.length > 0;
+    const anyActive = activeProjectiles.some(p => p.active) || activeExplosions.some(e => !e.done);
     const anyFalling = player.isFalling || cpu.isFalling;
     if (!anyActive && !anyFalling) {
         if (player.hp <= 0 || cpu.hp <= 0) {
