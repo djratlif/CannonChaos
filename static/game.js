@@ -291,7 +291,12 @@ class Projectile {
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 const shieldRadius = 25;
                 if (distance < shieldRadius + this.radius) {
-                    const damage = this.type === 'medium' ? 40 : 25;
+                    let damage = 30;
+                    if (this.type === 'nuke') {
+                        damage = 80;
+                    } else if (this.type === 'medium') {
+                        damage = 50;
+                    }
                     
                     if (this.type === 'ricochet' && this.ricochetCount < 3) {
                         this.ricochetCount++;
@@ -331,7 +336,12 @@ class Projectile {
                     this.vy = -Math.sin(rad) * bouncePower;
                     this.y = target.y - target.height - 8;
                 } else {
-                    const damage = this.type === 'medium' ? 40 : 25;
+                    let damage = 30;
+                    if (this.type === 'nuke') {
+                        damage = 80;
+                    } else if (this.type === 'medium') {
+                        damage = 50;
+                    }
                     target.hp -= damage;
                     if (target.hp < 0) target.hp = 0;
                     this.explode(target);
@@ -455,11 +465,11 @@ class Explosion {
                 const dist = Math.sqrt(dx * dx + dy * dy);
                 if (dist < this.maxRadius) {
                     const pct = 1 - (dist / this.maxRadius);
-                    let maxDmg = 25;
+                    let maxDmg = 30;
                     if (this.type === 'nuke') {
-                        maxDmg = 45;
+                        maxDmg = 80;
                     } else if (this.type === 'medium') {
-                        maxDmg = 40;
+                        maxDmg = 50;
                     }
                     const dmg = Math.floor(maxDmg * pct);
                     if (dmg > 0) {
@@ -757,6 +767,13 @@ window.addEventListener('keydown', (e) => {
         }
         if (e.code === 'Space' || e.code === 'Enter') {
             startGamePlay(selectedTerrainIndex === 0 ? 'mountains' : 'flat');
+        }
+        return;
+    }
+    if (currentState === GAME_STATE.GAMEOVER) {
+        if (e.code === 'Space' || e.code === 'Enter') {
+            setGameState(GAME_STATE.MODE_SELECT);
+            updateHUD();
         }
         return;
     }
@@ -1433,21 +1450,12 @@ function gameLoop() {
         drawModeSelectOverlay();
     } else if (currentState === GAME_STATE.TERRAIN_SELECT) {
         drawTerrainSelectOverlay();
+    } else if (currentState === GAME_STATE.GAMEOVER) {
+        drawGameOverOverlay();
     }
 
-    if (currentState === GAME_STATE.PLAYING || currentState === GAME_STATE.MENU || currentState === GAME_STATE.MODE_SELECT || currentState === GAME_STATE.TERRAIN_SELECT || activeProjectiles.some(p => p.active)) {
+    if (currentState === GAME_STATE.PLAYING || currentState === GAME_STATE.MENU || currentState === GAME_STATE.MODE_SELECT || currentState === GAME_STATE.TERRAIN_SELECT || currentState === GAME_STATE.GAMEOVER || activeProjectiles.some(p => p.active)) {
         requestAnimationFrame(gameLoop);
-    } else {
-        // Draw one last frame to show game over state
-        ctx.fillStyle = '#87CEEB';
-        ctx.fillRect(0, 0, VIEW_WIDTH, HEIGHT);
-        ctx.save();
-        ctx.translate(-Math.round(camera.x), -Math.round(camera.y));
-        drawTerrain();
-        if (player) player.draw();
-        if (cpu) cpu.draw();
-        ctx.restore();
-        drawMinimap();
     }
 }
 
@@ -1497,6 +1505,56 @@ function drawTerrainSelectOverlay() {
     ctx.font = '10px "Press Start 2P", cursive';
     ctx.fillStyle = '#aaaaaa';
     ctx.fillText('USE ARROWS TO SELECT, SPACE / CLICK TO PLAY', VIEW_WIDTH / 2, boxY + 230);
+}
+
+let gameOverFrameCount = 0;
+function drawGameOverOverlay() {
+    gameOverFrameCount++;
+    
+    // Dim background slightly
+    ctx.fillStyle = 'rgba(11, 29, 40, 0.7)';
+    ctx.fillRect(0, 0, VIEW_WIDTH, HEIGHT);
+    
+    // Draw central retro box
+    const boxW = 550;
+    const boxH = 260;
+    const boxX = (VIEW_WIDTH - boxW) / 2;
+    const boxY = (HEIGHT - boxH) / 2;
+    
+    ctx.fillStyle = '#112233';
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 6;
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.strokeRect(boxX, boxY, boxW, boxH);
+    
+    // Winner Text
+    const playerWon = player.hp > 0;
+    ctx.font = '28px "Press Start 2P", cursive';
+    
+    // Flashing effect
+    const flash = Math.floor(gameOverFrameCount / 20) % 2 === 0;
+    if (flash) {
+        ctx.fillStyle = playerWon ? '#3b82f6' : '#ef4444';
+    } else {
+        ctx.fillStyle = '#ffffff';
+    }
+    
+    ctx.textAlign = 'center';
+    const winText = playerWon ? 'PLAYER 1 WINS!' : 'CPU WINS!';
+    ctx.fillText(winText, VIEW_WIDTH / 2, boxY + 80);
+    
+    // Sub-text
+    ctx.font = '14px "Press Start 2P", cursive';
+    ctx.fillStyle = '#00ffcc';
+    ctx.fillText('THANKS FOR PLAYING', VIEW_WIDTH / 2, boxY + 140);
+    
+    // Press Space / Tap to Restart
+    const pulse = Math.floor(gameOverFrameCount / 30) % 2 === 0;
+    if (pulse) {
+        ctx.font = '12px "Press Start 2P", cursive';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('PRESS ENTER / CLICK TO PLAY AGAIN', VIEW_WIDTH / 2, boxY + 200);
+    }
 }
 
 function drawModeSelectOverlay() {
@@ -1659,6 +1717,12 @@ setupMobileControls();
 // Allow clicking or tapping the canvas to navigate the menus
 canvas.addEventListener('click', (e) => {
     if (currentState === GAME_STATE.MENU) {
+        setGameState(GAME_STATE.MODE_SELECT);
+        updateHUD();
+        return;
+    }
+    
+    if (currentState === GAME_STATE.GAMEOVER) {
         setGameState(GAME_STATE.MODE_SELECT);
         updateHUD();
         return;
