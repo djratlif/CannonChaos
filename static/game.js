@@ -988,11 +988,13 @@ function updateCamera() {
 
     let targetX = 0;
     let targetY = 0;
+    let lerpFactor = 0.025; // Default slow turn transition panning speed
 
     if (cameraFocusOverride) {
         targetX = cameraFocusOverride.x - VIEW_WIDTH / 2;
         targetY = cameraFocusOverride.y - HEIGHT / 2;
         targetY = Math.min(0, targetY);
+        lerpFactor = 0.08; // Normal speed to focus on impact
 
         cameraFocusOverride.duration--;
         if (cameraFocusOverride.duration <= 0) {
@@ -1002,9 +1004,9 @@ function updateCamera() {
         const activeProj = activeProjectiles.find(p => p.active);
         if (activeProj) {
             targetX = activeProj.x - VIEW_WIDTH / 2;
-            // Pan camera upwards to follow high-flying projectile
             targetY = activeProj.y - HEIGHT / 2;
-            targetY = Math.min(0, targetY); // Only pan upwards, do not show area below the ground level
+            targetY = Math.min(0, targetY);
+            lerpFactor = 0.12; // Fast tracking speed so camera doesn't lag behind the mortar
         } else {
             const activeTank = (turn === 0) ? player : cpu;
             if (activeTank) {
@@ -1016,13 +1018,13 @@ function updateCamera() {
     }
 
     targetX = Math.max(0, Math.min(WORLD_WIDTH - VIEW_WIDTH, targetX));
-    camera.x += (targetX - camera.x) * 0.025; // Slower, smoother panning transition
+    camera.x += (targetX - camera.x) * lerpFactor;
     if (Math.abs(camera.x - targetX) < 0.1) {
         camera.x = targetX;
     }
 
     // Y-axis panning
-    camera.y += (targetY - camera.y) * 0.025;
+    camera.y += (targetY - camera.y) * lerpFactor;
     if (Math.abs(camera.y - targetY) < 0.1) {
         camera.y = targetY;
     }
