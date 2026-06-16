@@ -37,23 +37,32 @@ const GRAVITY = 0.5;
 // Camera
 const camera = {
     x: 0,
-    targetX: 0
+    y: 0,
+    targetX: 0,
+    targetY: 0
 };
 
 // Last shot angle tracker
-let lastShot = {
+let playerLastShot = {
     x: 0,
     y: 0,
     angle: 0,
-    ownerIsPlayer: true,
+    active: false
+};
+
+let cpuLastShot = {
+    x: 0,
+    y: 0,
+    angle: 0,
     active: false
 };
 
 // Players
 let turn = 0; // 0 for Player, 1 for CPU
 
-// Trajectory Line
-let previousTrajectory = [];
+// Trajectory Lines
+let playerLastTrajectory = [];
+let cpuLastTrajectory = [];
 
 class Tank {
     constructor(x, color, isPlayer) {
@@ -75,8 +84,8 @@ class Tank {
         
         // Firing parameters
         this.angle = isPlayer ? 45 : 135;
-        this.power = isPlayer ? 36 : 0; // Default static power
-        this.maxPower = 75; // max velocity
+        this.power = isPlayer ? 22 : 0; // Default static power
+        this.maxPower = 45; // max velocity
         this.isCharging = false;
         
         // AI memory
@@ -328,7 +337,11 @@ class Projectile {
 
     explode() {
         this.active = false;
-        previousTrajectory = [...this.path]; // Save trajectory
+        if (this.ownerIsPlayer) {
+            playerLastTrajectory = [...this.path];
+        } else {
+            cpuLastTrajectory = [...this.path];
+        }
         
         // Destroy terrain at impact point (medium crater is 45, standard is 25)
         const craterRadius = this.type === 'medium' ? 45 : 25;
@@ -473,7 +486,14 @@ function startGamePlay(terrainType) {
     player = new Tank(100, '#3b82f6', true);
     cpu = new Tank(WIDTH - 100, '#ef4444', false);
     turn = 0;
-    previousTrajectory = [];
+    playerLastTrajectory = [];
+    cpuLastTrajectory = [];
+    playerLastShot.active = false;
+    cpuLastShot.active = false;
+    camera.x = 0;
+    camera.y = 0;
+    camera.targetX = 0;
+    camera.targetY = 0;
     activeProjectiles = [];
     setGameState(GAME_STATE.PLAYING);
     updateHUD();
@@ -490,7 +510,14 @@ function initGame() {
     const skipMenu = DEV_SKIP_MENU || new URLSearchParams(window.location.search).has('skipMenu');
     setGameState(skipMenu ? GAME_STATE.PLAYING : GAME_STATE.MENU);
 
-    previousTrajectory = [];
+    playerLastTrajectory = [];
+    cpuLastTrajectory = [];
+    playerLastShot.active = false;
+    cpuLastShot.active = false;
+    camera.x = 0;
+    camera.y = 0;
+    camera.targetX = 0;
+    camera.targetY = 0;
     activeProjectiles = [];
     updateHUD();
     gameLoop();
@@ -630,13 +657,21 @@ function fireProjectile(tank) {
         }
     }
     
-    lastShot = {
-        x: spawnX,
-        y: spawnY,
-        angle: tank.angle,
-        ownerIsPlayer: tank.isPlayer,
-        active: true
-    };
+    if (tank.isPlayer) {
+        playerLastShot = {
+            x: spawnX,
+            y: spawnY,
+            angle: tank.angle,
+            active: true
+        };
+    } else {
+        cpuLastShot = {
+            x: spawnX,
+            y: spawnY,
+            angle: tank.angle,
+            active: true
+        };
+    }
     activeProjectiles.push(new Projectile(spawnX, spawnY, tank.angle, tank.power, tank.isPlayer, weaponType));
     updateHUD();
 }
@@ -647,17 +682,17 @@ function cpuTurn() {
     // Very Basic AI
     if (cpu.lastShotTooShort === null) {
         cpu.angle = 135; // Aim left (180 - 45)
-        cpu.power = 45;
+        cpu.power = 27;
     } else {
         // Adjust power based on previous shot
         if (cpu.lastShotTooShort) {
-            cpu.power += 5;
+            cpu.power += 3;
         } else {
-            cpu.power -= 5;
+            cpu.power -= 3;
         }
         // Clamp
         if (cpu.power > cpu.maxPower) cpu.power = cpu.maxPower;
-        if (cpu.power < 15) cpu.power = 15;
+        if (cpu.power < 9) cpu.power = 9;
     }
     
     cpu.lastAngle = cpu.angle;
@@ -877,17 +912,30 @@ function drawTerrain() {
 }
 
 function drawTrajectory() {
-    if (previousTrajectory.length < 2) return;
-    
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-    ctx.setLineDash([5, 5]); // Dashed line
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(previousTrajectory[0].x, previousTrajectory[0].y);
-    for(let i=1; i<previousTrajectory.length; i+=2) { // Skip some points for performance/style
-        ctx.lineTo(previousTrajectory[i].x, previousTrajectory[i].y);
+    // Draw player's last shot trajectory
+    if (playerLastTrajectory && playerLastTrajectory.length >= 2) {
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.4)';
+        ctx.setLineDash([5, 5]);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(playerLastTrajectory[0].x, playerLastTrajectory[0].y);
+        for(let i=1; i<playerLastTrajectory.length; i+=2) {
+            ctx.lineTo(playerLastTrajectory[i].x, playerLastTrajectory[i].y);
+        }
+        ctx.stroke();
     }
-    ctx.stroke();
+    // Draw CPU's last shot trajectory
+    if (cpuLastTrajectory && cpuLastTrajectory.length >= 2) {
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+        ctx.setLineDash([5, 5]);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cpuLastTrajectory[0].x, cpuLastTrajectory[0].y);
+        for(let i=1; i<cpuLastTrajectory.length; i+=2) {
+            ctx.lineTo(cpuLastTrajectory[i].x, cpuLastTrajectory[i].y);
+        }
+        ctx.stroke();
+    }
     ctx.setLineDash([]); // Reset dash
 }
 
@@ -895,17 +943,25 @@ function updateCamera() {
     if (currentState !== GAME_STATE.PLAYING && currentState !== GAME_STATE.GAMEOVER) {
         camera.targetX = 0;
         camera.x = 0;
+        camera.targetY = 0;
+        camera.y = 0;
         return;
     }
 
     let targetX = 0;
+    let targetY = 0;
     const activeProj = activeProjectiles.find(p => p.active);
     if (activeProj) {
         targetX = activeProj.x - VIEW_WIDTH / 2;
+        // Pan camera upwards to follow high-flying projectile
+        targetY = activeProj.y - HEIGHT / 2;
+        targetY = Math.min(0, targetY); // Only pan upwards, do not show area below the ground level
     } else {
         const activeTank = (turn === 0) ? player : cpu;
         if (activeTank) {
             targetX = activeTank.x - VIEW_WIDTH / 2;
+            targetY = activeTank.y - HEIGHT / 2;
+            targetY = Math.min(0, targetY);
         }
     }
 
@@ -913,6 +969,12 @@ function updateCamera() {
     camera.x += (targetX - camera.x) * 0.025; // Slower, smoother panning transition
     if (Math.abs(camera.x - targetX) < 0.1) {
         camera.x = targetX;
+    }
+
+    // Y-axis panning
+    camera.y += (targetY - camera.y) * 0.025;
+    if (Math.abs(camera.y - targetY) < 0.1) {
+        camera.y = targetY;
     }
 }
 
@@ -960,32 +1022,33 @@ function drawMinimap() {
         ctx.fillRect(minimapX + cpu.x * scaleX - 3, minimapY + (cpu.y / HEIGHT) * minimapH - 3, 6, 6);
     }
 
-    // Draw last shot trajectory on minimap
-    if (previousTrajectory && previousTrajectory.length > 1) {
-        ctx.strokeStyle = lastShot.ownerIsPlayer ? 'rgba(59, 130, 246, 0.6)' : 'rgba(239, 68, 68, 0.6)';
+    // Helper function to draw a trajectory on minimap
+    const drawMinimapTrajectory = (trajectory, isPlayer) => {
+        if (!trajectory || trajectory.length < 2) return;
+        ctx.strokeStyle = isPlayer ? 'rgba(59, 130, 246, 0.6)' : 'rgba(239, 68, 68, 0.6)';
         ctx.lineWidth = 1.5;
         ctx.setLineDash([2, 2]);
         ctx.beginPath();
         
-        const startX = minimapX + previousTrajectory[0].x * scaleX;
-        const startY = minimapY + (previousTrajectory[0].y / HEIGHT) * minimapH;
+        const startX = minimapX + trajectory[0].x * scaleX;
+        const startY = minimapY + (trajectory[0].y / HEIGHT) * minimapH;
         ctx.moveTo(startX, startY);
         
-        for (let i = 1; i < previousTrajectory.length; i++) {
-            const tx = minimapX + previousTrajectory[i].x * scaleX;
-            const ty = minimapY + (previousTrajectory[i].y / HEIGHT) * minimapH;
+        for (let i = 1; i < trajectory.length; i++) {
+            const tx = minimapX + trajectory[i].x * scaleX;
+            const ty = minimapY + (trajectory[i].y / HEIGHT) * minimapH;
             ctx.lineTo(tx, ty);
         }
         ctx.stroke();
         ctx.setLineDash([]);
         
         // Draw hit spot (last point in trajectory)
-        const lastPoint = previousTrajectory[previousTrajectory.length - 1];
+        const lastPoint = trajectory[trajectory.length - 1];
         const hx = minimapX + lastPoint.x * scaleX;
         const hy = minimapY + (lastPoint.y / HEIGHT) * minimapH;
         
         // Fill core
-        ctx.fillStyle = lastShot.ownerIsPlayer ? '#3b82f6' : '#ef4444';
+        ctx.fillStyle = isPlayer ? '#3b82f6' : '#ef4444';
         ctx.beginPath();
         ctx.arc(hx, hy, 3, 0, Math.PI * 2);
         ctx.fill();
@@ -996,7 +1059,10 @@ function drawMinimap() {
         ctx.beginPath();
         ctx.arc(hx, hy, 5, 0, Math.PI * 2);
         ctx.stroke();
-    }
+    };
+
+    drawMinimapTrajectory(playerLastTrajectory, true);
+    drawMinimapTrajectory(cpuLastTrajectory, false);
 
     // Draw active projectile
     const activeProj = activeProjectiles.find(p => p.active);
@@ -1064,7 +1130,7 @@ function gameLoop() {
     updateCamera();
 
     ctx.save();
-    ctx.translate(-Math.round(camera.x), 0);
+    ctx.translate(-Math.round(camera.x), -Math.round(camera.y));
 
     drawTerrain();
     drawTrajectory();
@@ -1107,7 +1173,7 @@ function gameLoop() {
         ctx.fillStyle = '#87CEEB';
         ctx.fillRect(0, 0, VIEW_WIDTH, HEIGHT);
         ctx.save();
-        ctx.translate(-Math.round(camera.x), 0);
+        ctx.translate(-Math.round(camera.x), -Math.round(camera.y));
         drawTerrain();
         if (player) player.draw();
         if (cpu) cpu.draw();
