@@ -377,10 +377,46 @@ class Projectile {
 
     draw() {
         if (!this.active) return;
-        ctx.fillStyle = '#000';
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fill();
+        
+        if (this.type === 'nuke') {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            // Rotate based on the velocity vector to align with path
+            const angle = Math.atan2(this.vy, this.vx);
+            ctx.rotate(angle);
+            
+            // Draw a retro mini-nuke (fat yellow/green bomb with black fins)
+            // Fins (tail)
+            ctx.fillStyle = '#111111';
+            ctx.fillRect(-10, -6, 3, 12); // vertical tail fin
+            ctx.fillRect(-10, -2, 6, 4);  // tail connector
+            
+            // Bomb body (fat oval shape)
+            ctx.fillStyle = '#8b9bb4'; // metal gray/blue
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 8, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Yellow stripe/band
+            ctx.fillStyle = '#eab308'; // retro yellow
+            ctx.fillRect(0, -5, 3, 10);
+            
+            // Nose cone tip (pointed/rounded front)
+            ctx.fillStyle = '#ef4444'; // red tip
+            ctx.beginPath();
+            ctx.moveTo(8, 0);
+            ctx.lineTo(5, -4);
+            ctx.lineTo(5, 4);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.restore();
+        } else {
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
     }
 }
 
