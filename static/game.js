@@ -15,6 +15,8 @@ let selectedTerrainIndex = 0; // 0 for Mountains, 1 for Flat
 let selectedDifficultyIndex = 1; // 0: Easy, 1: Medium, 2: Hard
 let cpuDifficulty = 'medium';
 let selectedTerrainType = 'mountains';
+let lastShotDamageDealt = 0;
+let lastFallDamageDealt = 0;
 
 // DEV CONFIG: Set to true to bypass title screen menu during development
 const DEV_SKIP_MENU = false; 
@@ -69,7 +71,8 @@ let playerLastTrajectory = [];
 let cpuLastTrajectory = [];
 
 let cameraFocusOverride = null;
-let distanceFeedback = null;
+let lastShotDistance = 0;
+let bannerFeedback = null;
 let turnTransitionTimeout = null;
 
 class Tank {
@@ -130,6 +133,7 @@ class Tank {
                     const fallDistance = this.targetY - this.fallStartY;
                     if (fallDistance > 10) {
                         let damage = Math.floor(fallDistance * 0.4);
+                        const oldHp = this.hp + this.shieldHp;
                         if (this.shieldHp > 0) {
                             if (this.shieldHp >= damage) {
                                 this.shieldHp -= damage;
@@ -142,6 +146,13 @@ class Tank {
                         if (damage > 0) {
                             this.hp -= damage;
                             if (this.hp < 0) this.hp = 0;
+                        }
+                        const newHp = this.hp + this.shieldHp;
+                        const actualDmg = oldHp - newHp;
+                        
+                        const fellIsOpponent = (turn === 0 && !this.isPlayer) || (turn === 1 && this.isPlayer);
+                        if (fellIsOpponent) {
+                            lastFallDamageDealt += actualDmg;
                         }
                         updateHUD();
                         
@@ -304,8 +315,14 @@ class Projectile {
                     
                     if (this.type === 'ricochet' && this.ricochetCount < 3) {
                         this.ricochetCount++;
+                        const oldTargetHp = target.hp + target.shieldHp;
                         target.shieldHp -= 15;
                         if (target.shieldHp < 0) target.shieldHp = 0;
+                        const newTargetHp = target.hp + target.shieldHp;
+                        const targetIsOpponent = (this.ownerIsPlayer && target === cpu) || (!this.ownerIsPlayer && target === player);
+                        if (targetIsOpponent) {
+                            lastShotDamageDealt += (oldTargetHp - newTargetHp);
+                        }
                         destroyTerrain(this.x, this.y, 20);
                         
                         const randAngle = 45 + Math.random() * 90;
@@ -315,8 +332,14 @@ class Projectile {
                         this.vy = -Math.sin(rad) * bouncePower;
                         this.y = (target.y + 7) - 33;
                     } else {
+                        const oldTargetHp = target.hp + target.shieldHp;
                         target.shieldHp -= damage;
                         if (target.shieldHp < 0) target.shieldHp = 0;
+                        const newTargetHp = target.hp + target.shieldHp;
+                        const targetIsOpponent = (this.ownerIsPlayer && target === cpu) || (!this.ownerIsPlayer && target === player);
+                        if (targetIsOpponent) {
+                            lastShotDamageDealt += (oldTargetHp - newTargetHp);
+                        }
                         this.explode(target);
                     }
                     updateHUD();
@@ -329,8 +352,14 @@ class Projectile {
                 
                 if (this.type === 'ricochet' && this.ricochetCount < 3) {
                     this.ricochetCount++;
+                    const oldTargetHp = target.hp + target.shieldHp;
                     target.hp -= 15; // Lower damage for intermediate ricochet hits
                     if (target.hp < 0) target.hp = 0;
+                    const newTargetHp = target.hp + target.shieldHp;
+                    const targetIsOpponent = (this.ownerIsPlayer && target === cpu) || (!this.ownerIsPlayer && target === player);
+                    if (targetIsOpponent) {
+                        lastShotDamageDealt += (oldTargetHp - newTargetHp);
+                    }
                     destroyTerrain(this.x, this.y, 20);
                     
                     const randAngle = 45 + Math.random() * 90;
@@ -346,8 +375,14 @@ class Projectile {
                     } else if (this.type === 'medium') {
                         damage = 50;
                     }
+                    const oldTargetHp = target.hp + target.shieldHp;
                     target.hp -= damage;
                     if (target.hp < 0) target.hp = 0;
+                    const newTargetHp = target.hp + target.shieldHp;
+                    const targetIsOpponent = (this.ownerIsPlayer && target === cpu) || (!this.ownerIsPlayer && target === player);
+                    if (targetIsOpponent) {
+                        lastShotDamageDealt += (oldTargetHp - newTargetHp);
+                    }
                     this.explode(target);
                 }
             }
@@ -374,13 +409,7 @@ class Projectile {
 
         // Duration of feedback should account for the explosion animation time
         const explosionDuration = this.type === 'nuke' ? 60 : 20;
-        distanceFeedback = {
-            x: this.x,
-            y: this.y - 25,
-            distance: distance,
-            ownerIsPlayer: this.ownerIsPlayer,
-            timer: 120 + explosionDuration
-        };
+        lastShotDistance = distance;
 
         cameraFocusOverride = {
             x: this.x,
@@ -477,6 +506,7 @@ class Explosion {
                     }
                     const dmg = Math.floor(maxDmg * pct);
                     if (dmg > 0) {
+                        const oldTargetHp = tank.hp + tank.shieldHp;
                         if (tank.shieldHp > 0) {
                             if (tank.shieldHp >= dmg) {
                                 tank.shieldHp -= dmg;
@@ -488,6 +518,12 @@ class Explosion {
                             tank.hp -= dmg;
                         }
                         if (tank.hp < 0) tank.hp = 0;
+                        const newTargetHp = tank.hp + tank.shieldHp;
+                        
+                        const targetIsOpponent = (this.ownerIsPlayer && tank === cpu) || (!this.ownerIsPlayer && tank === player);
+                        if (targetIsOpponent) {
+                            lastShotDamageDealt += (oldTargetHp - newTargetHp);
+                        }
                     }
                 }
             });
@@ -574,6 +610,13 @@ function checkTurnTransition(delayMs = 0) {
 }
 
 function performTurnTransition() {
+    bannerFeedback = {
+        distance: lastShotDistance,
+        damage: lastShotDamageDealt,
+        fallDamage: lastFallDamageDealt,
+        timer: 60
+    };
+
     turn = turn === 0 ? 1 : 0;
     if (turn === 1) {
         setTimeout(cpuTurn, 1000);
@@ -854,6 +897,8 @@ function handleInput() {
 }
 
 function fireProjectile(tank) {
+    lastShotDamageDealt = 0;
+    lastFallDamageDealt = 0;
     const rad = tank.angle * Math.PI / 180;
     const spawnX = tank.x + Math.cos(rad) * 20;
     const spawnY = tank.y + 7 - Math.sin(rad) * 20;
@@ -1467,44 +1512,57 @@ function gameLoop() {
         }
     }
 
-    // Draw distance feedback and line to target if active
-    if (distanceFeedback && distanceFeedback.timer > 0) {
-        const target = distanceFeedback.ownerIsPlayer ? cpu : player;
+    ctx.restore();
+
+    // Draw center screen flash banner (outside camera transform so it stays fixed on screen)
+    if (bannerFeedback && bannerFeedback.timer > 0) {
+        const bannerH = 110;
+        const bannerY = HEIGHT / 2 - bannerH / 2;
         
-        // Draw dotted line between hit spot and target tank
-        ctx.strokeStyle = distanceFeedback.ownerIsPlayer ? 'rgba(59, 130, 246, 0.4)' : 'rgba(239, 68, 68, 0.4)';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4, 4]);
+        ctx.fillStyle = 'rgba(11, 29, 40, 0.85)';
+        ctx.fillRect(0, bannerY, VIEW_WIDTH, bannerH);
+        
+        ctx.strokeStyle = '#00ffcc';
+        ctx.lineWidth = 4;
         ctx.beginPath();
-        ctx.moveTo(distanceFeedback.x, distanceFeedback.y + 25);
-        ctx.lineTo(target.x, target.y + 7);
+        ctx.moveTo(0, bannerY);
+        ctx.lineTo(VIEW_WIDTH, bannerY);
+        ctx.moveTo(0, bannerY + bannerH);
+        ctx.lineTo(VIEW_WIDTH, bannerY + bannerH);
         ctx.stroke();
-        ctx.setLineDash([]);
         
-        // Draw retro styled floating text
-        ctx.font = '10px "Press Start 2P", cursive';
         ctx.textAlign = 'center';
         
-        const text = `${distanceFeedback.distance}px`;
+        const pulse = Math.floor(bannerFeedback.timer / 10) % 2 === 0;
         
-        // Text Shadow/Outline
-        ctx.fillStyle = '#000000';
-        ctx.fillText(text, distanceFeedback.x - 1, distanceFeedback.y - 1);
-        ctx.fillText(text, distanceFeedback.x + 1, distanceFeedback.y - 1);
-        ctx.fillText(text, distanceFeedback.x - 1, distanceFeedback.y + 1);
-        ctx.fillText(text, distanceFeedback.x + 1, distanceFeedback.y + 1);
+        // Line 1: Distance text
+        ctx.font = '16px "Press Start 2P", cursive';
+        let distText = '';
+        if (bannerFeedback.distance <= 15) { // within 15px is direct hit
+            distText = 'DIRECT HIT!';
+            ctx.fillStyle = pulse ? '#ffcc00' : '#ffffff';
+        } else {
+            distText = `MISSED BY ${bannerFeedback.distance}px`;
+            ctx.fillStyle = '#ffffff';
+        }
+        ctx.fillText(distText, VIEW_WIDTH / 2, bannerY + 35);
         
-        // Text Foreground
-        ctx.fillStyle = distanceFeedback.ownerIsPlayer ? '#3b82f6' : '#ef4444';
-        ctx.fillText(text, distanceFeedback.x, distanceFeedback.y);
+        // Line 2: Hit Damage text
+        ctx.font = '11px "Press Start 2P", cursive';
+        let hitDmgText = `HIT DAMAGE: ${bannerFeedback.damage > 0 ? '-' + bannerFeedback.damage : '0'} HP`;
+        ctx.fillStyle = bannerFeedback.damage > 0 ? '#ef4444' : '#aaaaaa';
+        ctx.fillText(hitDmgText, VIEW_WIDTH / 2, bannerY + 65);
+
+        // Line 3: Fall Damage text
+        let fallDmgText = `FALL DAMAGE: ${bannerFeedback.fallDamage > 0 ? '-' + bannerFeedback.fallDamage : '0'} HP`;
+        ctx.fillStyle = bannerFeedback.fallDamage > 0 ? '#ef4444' : '#aaaaaa';
+        ctx.fillText(fallDmgText, VIEW_WIDTH / 2, bannerY + 90);
         
-        distanceFeedback.timer--;
-        if (distanceFeedback.timer <= 0) {
-            distanceFeedback = null;
+        bannerFeedback.timer--;
+        if (bannerFeedback.timer <= 0) {
+            bannerFeedback = null;
         }
     }
-
-    ctx.restore();
 
     drawMinimap();
 
