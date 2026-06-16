@@ -6,11 +6,15 @@ const GAME_STATE = {
     MENU: 'MENU',
     MODE_SELECT: 'MODE_SELECT',
     TERRAIN_SELECT: 'TERRAIN_SELECT',
+    DIFFICULTY_SELECT: 'DIFFICULTY_SELECT',
     PLAYING: 'PLAYING',
     GAMEOVER: 'GAMEOVER'
 };
 let selectedModeIndex = 0; // 0 for Quick Play, 1 for Sandbox
 let selectedTerrainIndex = 0; // 0 for Mountains, 1 for Flat
+let selectedDifficultyIndex = 1; // 0: Easy, 1: Medium, 2: Hard
+let cpuDifficulty = 'medium';
+let selectedTerrainType = 'mountains';
 
 // DEV CONFIG: Set to true to bypass title screen menu during development
 const DEV_SKIP_MENU = false; 
@@ -685,6 +689,9 @@ function startGamePlay(terrainType) {
     generateTerrain(terrainType);
     player = new Tank(100, '#3b82f6', true);
     cpu = new Tank(WIDTH - 100, '#ef4444', false);
+    cpu.lastShotTooShort = null;
+    cpu.lastShotShortLongSwitched = false;
+    cpu.hardStep = 4;
     turn = 0;
     playerLastTrajectory = [];
     cpuLastTrajectory = [];
@@ -756,6 +763,10 @@ window.addEventListener('keydown', (e) => {
         }
         if (e.code === 'Space' || e.code === 'Enter') {
             if (selectedModeIndex === 0) {
+                cpuDifficulty = 'medium';
+                const randomTerrain = Math.random() < 0.5 ? 'mountains' : 'flat';
+                startGamePlay(randomTerrain);
+            } else {
                 setGameState(GAME_STATE.TERRAIN_SELECT);
                 updateHUD();
             }
@@ -770,7 +781,22 @@ window.addEventListener('keydown', (e) => {
             selectedTerrainIndex = 1;
         }
         if (e.code === 'Space' || e.code === 'Enter') {
-            startGamePlay(selectedTerrainIndex === 0 ? 'mountains' : 'flat');
+            selectedTerrainType = selectedTerrainIndex === 0 ? 'mountains' : 'flat';
+            setGameState(GAME_STATE.DIFFICULTY_SELECT);
+            updateHUD();
+        }
+        return;
+    }
+    if (currentState === GAME_STATE.DIFFICULTY_SELECT) {
+        if (e.code === 'ArrowUp') {
+            selectedDifficultyIndex = (selectedDifficultyIndex - 1 + 3) % 3;
+        }
+        if (e.code === 'ArrowDown') {
+            selectedDifficultyIndex = (selectedDifficultyIndex + 1) % 3;
+        }
+        if (e.code === 'Space' || e.code === 'Enter') {
+            cpuDifficulty = selectedDifficultyIndex === 0 ? 'easy' : (selectedDifficultyIndex === 1 ? 'medium' : 'hard');
+            startGamePlay(selectedTerrainType);
         }
         return;
     }
@@ -893,31 +919,54 @@ function fireProjectile(tank) {
 function cpuTurn() {
     if (currentState !== GAME_STATE.PLAYING) return;
     
-    // Very Basic AI
+    let baseAngle = 135;
+    let basePower = 27;
+    
     if (cpu.lastShotTooShort === null) {
-        cpu.angle = 135; // Aim left (180 - 45)
-        cpu.power = 27;
+        cpu.angle = baseAngle;
+        cpu.power = basePower;
+        cpu.hardStep = 4;
     } else {
-        // Adjust power based on previous shot
-        if (cpu.lastShotTooShort) {
-            cpu.power += 3;
-        } else {
-            cpu.power -= 3;
+        let adjustment = 3;
+        if (cpuDifficulty === 'easy') {
+            adjustment = 5;
+        } else if (cpuDifficulty === 'hard') {
+            if (cpu.lastShotShortLongSwitched) {
+                cpu.hardStep = Math.max(1, (cpu.hardStep || 4) * 0.5);
+            } else {
+                cpu.hardStep = cpu.hardStep || 4;
+            }
+            adjustment = cpu.hardStep;
         }
-        // Clamp
-        if (cpu.power > cpu.maxPower) cpu.power = cpu.maxPower;
-        if (cpu.power < 9) cpu.power = 9;
+        
+        if (cpu.lastShotTooShort) {
+            cpu.power += adjustment;
+        } else {
+            cpu.power -= adjustment;
+        }
     }
+    
+    let angleNoise = 0;
+    let powerNoise = 0;
+    if (cpuDifficulty === 'easy') {
+        angleNoise = (Math.random() * 12 - 6);
+        powerNoise = (Math.random() * 6 - 3);
+    } else if (cpuDifficulty === 'medium') {
+        angleNoise = (Math.random() * 4 - 2);
+        powerNoise = (Math.random() * 2 - 1);
+    }
+    
+    cpu.angle = 135 + angleNoise;
+    cpu.angle = Math.max(90, Math.min(180, cpu.angle));
+    
+    cpu.power += powerNoise;
+    cpu.power = Math.max(9, Math.min(cpu.maxPower, cpu.power));
     
     cpu.lastAngle = cpu.angle;
     cpu.lastPower = cpu.power;
     
-    // Simulate charging time
     setTimeout(() => {
         fireProjectile(cpu);
-        // We evaluate too short/long when it lands, but for simplicity we estimate
-        // If the bullet lands to the right of the player, it was too short (since CPU shoots left).
-        // Actual evaluation should be done when projectile explodes.
     }, 1000);
 }
 
@@ -925,6 +974,7 @@ function cpuTurn() {
 const originalExplode = Projectile.prototype.explode;
 Projectile.prototype.explode = function(directHitTank) {
     if (!this.ownerIsPlayer) {
+        const wasTooShort = cpu.lastShotTooShort;
         // CPU shot landed at this.x
         // Player is at player.x
         // CPU shoots left. If this.x > player.x, it fell short. If this.x < player.x, it went too far.
@@ -933,6 +983,11 @@ Projectile.prototype.explode = function(directHitTank) {
         } else {
             cpu.lastShotTooShort = false;
         }
+        if (wasTooShort !== null && wasTooShort !== cpu.lastShotTooShort) {
+            cpu.lastShotShortLongSwitched = true;
+        } else {
+            cpu.lastShotShortLongSwitched = false;
+        }
     }
     originalExplode.call(this, directHitTank);
 };
@@ -940,6 +995,11 @@ Projectile.prototype.explode = function(directHitTank) {
 function updateHUD() {
     document.getElementById('player-hp').innerText = player.hp;
     document.getElementById('cpu-hp').innerText = cpu.hp;
+    
+    const cpuName = document.querySelector('#cpu-hud p');
+    if (cpuName) {
+        cpuName.innerText = `CPU (${cpuDifficulty.toUpperCase()})`;
+    }
 
     const playerShieldSpan = document.getElementById('player-shield');
     if (playerShieldSpan) playerShieldSpan.innerText = player.shieldHp;
@@ -1454,11 +1514,13 @@ function gameLoop() {
         drawModeSelectOverlay();
     } else if (currentState === GAME_STATE.TERRAIN_SELECT) {
         drawTerrainSelectOverlay();
+    } else if (currentState === GAME_STATE.DIFFICULTY_SELECT) {
+        drawDifficultySelectOverlay();
     } else if (currentState === GAME_STATE.GAMEOVER) {
         drawGameOverOverlay();
     }
 
-    if (currentState === GAME_STATE.PLAYING || currentState === GAME_STATE.MENU || currentState === GAME_STATE.MODE_SELECT || currentState === GAME_STATE.TERRAIN_SELECT || currentState === GAME_STATE.GAMEOVER || activeProjectiles.some(p => p.active)) {
+    if (currentState === GAME_STATE.PLAYING || currentState === GAME_STATE.MENU || currentState === GAME_STATE.MODE_SELECT || currentState === GAME_STATE.TERRAIN_SELECT || currentState === GAME_STATE.DIFFICULTY_SELECT || currentState === GAME_STATE.GAMEOVER || activeProjectiles.some(p => p.active)) {
         requestAnimationFrame(gameLoop);
     }
 }
@@ -1596,17 +1658,61 @@ function drawModeSelectOverlay() {
     ctx.fillText(opt1Text, VIEW_WIDTH / 2, boxY + 110);
     
     // Option 2: Sandbox
-    ctx.fillStyle = selectedModeIndex === 1 ? '#ef4444' : '#888888';
-    let opt2Text = 'SANDBOX (COMING SOON)';
-    if (selectedModeIndex === 1) {
-        opt2Text = '▶ SANDBOX (COMING SOON)';
-    }
+    ctx.fillStyle = selectedModeIndex === 1 ? '#00ffcc' : '#ffffff';
+    let opt2Text = selectedModeIndex === 1 ? '▶ SANDBOX' : 'SANDBOX';
     ctx.fillText(opt2Text, VIEW_WIDTH / 2, boxY + 170);
     
     // Navigation info
     ctx.font = '10px "Press Start 2P", cursive';
     ctx.fillStyle = '#aaaaaa';
     ctx.fillText('USE ARROWS TO SELECT, SPACE / CLICK TO PLAY', VIEW_WIDTH / 2, boxY + 230);
+}
+
+function drawDifficultySelectOverlay() {
+    // Dim background slightly
+    ctx.fillStyle = 'rgba(11, 29, 40, 0.6)';
+    ctx.fillRect(0, 0, VIEW_WIDTH, HEIGHT);
+    
+    // Draw central retro menu box
+    const boxW = 500;
+    const boxH = 280;
+    const boxX = (VIEW_WIDTH - boxW) / 2;
+    const boxY = (HEIGHT - boxH) / 2;
+    
+    ctx.fillStyle = '#112233';
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 6;
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.strokeRect(boxX, boxY, boxW, boxH);
+    
+    // Header
+    ctx.font = '24px "Press Start 2P", cursive';
+    ctx.fillStyle = 'var(--primary-color)';
+    ctx.textAlign = 'center';
+    ctx.fillText('SELECT DIFFICULTY', VIEW_WIDTH / 2, boxY + 50);
+    
+    // Options
+    ctx.font = '16px "Press Start 2P", cursive';
+    
+    // Option 1: Easy
+    ctx.fillStyle = selectedDifficultyIndex === 0 ? '#00ffcc' : '#ffffff';
+    let opt1Text = selectedDifficultyIndex === 0 ? '▶ EASY' : 'EASY';
+    ctx.fillText(opt1Text, VIEW_WIDTH / 2, boxY + 110);
+    
+    // Option 2: Medium
+    ctx.fillStyle = selectedDifficultyIndex === 1 ? '#00ffcc' : '#ffffff';
+    let opt2Text = selectedDifficultyIndex === 1 ? '▶ MEDIUM' : 'MEDIUM';
+    ctx.fillText(opt2Text, VIEW_WIDTH / 2, boxY + 160);
+
+    // Option 3: Hard
+    ctx.fillStyle = selectedDifficultyIndex === 2 ? '#00ffcc' : '#ffffff';
+    let opt3Text = selectedDifficultyIndex === 2 ? '▶ HARD' : 'HARD';
+    ctx.fillText(opt3Text, VIEW_WIDTH / 2, boxY + 210);
+    
+    // Navigation info
+    ctx.font = '10px "Press Start 2P", cursive';
+    ctx.fillStyle = '#aaaaaa';
+    ctx.fillText('USE ARROWS TO SELECT, SPACE / CLICK TO PLAY', VIEW_WIDTH / 2, boxY + 260);
 }
 
 function setupMobileControls() {
@@ -1748,13 +1854,15 @@ canvas.addEventListener('click', (e) => {
             // Quick Play boundary
             if (clickY >= boxY + 80 && clickY <= boxY + 130) {
                 selectedModeIndex = 0;
-                setGameState(GAME_STATE.TERRAIN_SELECT);
-                updateHUD();
+                cpuDifficulty = 'medium';
+                const randomTerrain = Math.random() < 0.5 ? 'mountains' : 'flat';
+                startGamePlay(randomTerrain);
             }
             // Sandbox boundary
             else if (clickY >= boxY + 140 && clickY <= boxY + 200) {
                 selectedModeIndex = 1;
-                // Coming soon
+                setGameState(GAME_STATE.TERRAIN_SELECT);
+                updateHUD();
             }
         }
     } else if (currentState === GAME_STATE.TERRAIN_SELECT) {
@@ -1762,12 +1870,37 @@ canvas.addEventListener('click', (e) => {
             // Mountains boundary
             if (clickY >= boxY + 80 && clickY <= boxY + 130) {
                 selectedTerrainIndex = 0;
-                startGamePlay('mountains');
+                selectedTerrainType = 'mountains';
+                setGameState(GAME_STATE.DIFFICULTY_SELECT);
+                updateHUD();
             }
             // Flat boundary
             else if (clickY >= boxY + 140 && clickY <= boxY + 200) {
                 selectedTerrainIndex = 1;
-                startGamePlay('flat');
+                selectedTerrainType = 'flat';
+                setGameState(GAME_STATE.DIFFICULTY_SELECT);
+                updateHUD();
+            }
+        }
+    } else if (currentState === GAME_STATE.DIFFICULTY_SELECT) {
+        if (clickX >= boxX && clickX <= boxX + boxW) {
+            // Easy boundary
+            if (clickY >= boxY + 90 && clickY <= boxY + 130) {
+                selectedDifficultyIndex = 0;
+                cpuDifficulty = 'easy';
+                startGamePlay(selectedTerrainType);
+            }
+            // Medium boundary
+            else if (clickY >= boxY + 140 && clickY <= boxY + 180) {
+                selectedDifficultyIndex = 1;
+                cpuDifficulty = 'medium';
+                startGamePlay(selectedTerrainType);
+            }
+            // Hard boundary
+            else if (clickY >= boxY + 190 && clickY <= boxY + 230) {
+                selectedDifficultyIndex = 2;
+                cpuDifficulty = 'hard';
+                startGamePlay(selectedTerrainType);
             }
         }
     }
