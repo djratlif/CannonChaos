@@ -75,8 +75,8 @@ class Tank {
         
         // Firing parameters
         this.angle = isPlayer ? 45 : 135;
-        this.power = isPlayer ? 12 : 0; // Default static power
-        this.maxPower = 25; // max velocity
+        this.power = isPlayer ? 36 : 0; // Default static power
+        this.maxPower = 75; // max velocity
         this.isCharging = false;
         
         // AI memory
@@ -580,12 +580,12 @@ function handleInput() {
 
     // Power adjustment: Up/Down keys or touch buttons
     if ((keys.ArrowUp || touchKeys.ArrowUp) && player.power < player.maxPower) {
-        player.power += 0.2;
+        player.power += 0.1;
         if (player.power > player.maxPower) player.power = player.maxPower;
         updateHUD();
     }
     if ((keys.ArrowDown || touchKeys.ArrowDown) && player.power > 0) {
-        player.power -= 0.2;
+        player.power -= 0.1;
         if (player.power < 0) player.power = 0;
         updateHUD();
     }
@@ -647,17 +647,17 @@ function cpuTurn() {
     // Very Basic AI
     if (cpu.lastShotTooShort === null) {
         cpu.angle = 135; // Aim left (180 - 45)
-        cpu.power = 15;
+        cpu.power = 45;
     } else {
         // Adjust power based on previous shot
         if (cpu.lastShotTooShort) {
-            cpu.power += 2;
+            cpu.power += 5;
         } else {
-            cpu.power -= 2;
+            cpu.power -= 5;
         }
         // Clamp
         if (cpu.power > cpu.maxPower) cpu.power = cpu.maxPower;
-        if (cpu.power < 5) cpu.power = 5;
+        if (cpu.power < 15) cpu.power = 15;
     }
     
     cpu.lastAngle = cpu.angle;
@@ -910,7 +910,7 @@ function updateCamera() {
     }
 
     targetX = Math.max(0, Math.min(WORLD_WIDTH - VIEW_WIDTH, targetX));
-    camera.x += (targetX - camera.x) * 0.08;
+    camera.x += (targetX - camera.x) * 0.025; // Slower, smoother panning transition
     if (Math.abs(camera.x - targetX) < 0.1) {
         camera.x = targetX;
     }
@@ -960,24 +960,42 @@ function drawMinimap() {
         ctx.fillRect(minimapX + cpu.x * scaleX - 3, minimapY + (cpu.y / HEIGHT) * minimapH - 3, 6, 6);
     }
 
-    // Draw last shot angle indicator
-    if (lastShot.active) {
-        ctx.strokeStyle = lastShot.ownerIsPlayer ? 'rgba(59, 130, 246, 0.7)' : 'rgba(239, 68, 68, 0.7)';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([3, 3]);
-        
-        const rad = lastShot.angle * Math.PI / 180;
-        const startX = minimapX + lastShot.x * scaleX;
-        const startY = minimapY + (lastShot.y / HEIGHT) * minimapH;
-        const indicatorLength = 35; // length of angle line on minimap
-        const endX = startX + Math.cos(rad) * indicatorLength;
-        const endY = startY - Math.sin(rad) * indicatorLength;
-
+    // Draw last shot trajectory on minimap
+    if (previousTrajectory && previousTrajectory.length > 1) {
+        ctx.strokeStyle = lastShot.ownerIsPlayer ? 'rgba(59, 130, 246, 0.6)' : 'rgba(239, 68, 68, 0.6)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([2, 2]);
         ctx.beginPath();
+        
+        const startX = minimapX + previousTrajectory[0].x * scaleX;
+        const startY = minimapY + (previousTrajectory[0].y / HEIGHT) * minimapH;
         ctx.moveTo(startX, startY);
-        ctx.lineTo(endX, endY);
+        
+        for (let i = 1; i < previousTrajectory.length; i++) {
+            const tx = minimapX + previousTrajectory[i].x * scaleX;
+            const ty = minimapY + (previousTrajectory[i].y / HEIGHT) * minimapH;
+            ctx.lineTo(tx, ty);
+        }
         ctx.stroke();
         ctx.setLineDash([]);
+        
+        // Draw hit spot (last point in trajectory)
+        const lastPoint = previousTrajectory[previousTrajectory.length - 1];
+        const hx = minimapX + lastPoint.x * scaleX;
+        const hy = minimapY + (lastPoint.y / HEIGHT) * minimapH;
+        
+        // Fill core
+        ctx.fillStyle = lastShot.ownerIsPlayer ? '#3b82f6' : '#ef4444';
+        ctx.beginPath();
+        ctx.arc(hx, hy, 3, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Crosshair / circle outline
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(hx, hy, 5, 0, Math.PI * 2);
+        ctx.stroke();
     }
 
     // Draw active projectile
