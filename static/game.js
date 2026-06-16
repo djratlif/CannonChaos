@@ -28,9 +28,26 @@ function setGameState(state) {
 
 // Entities
 let terrain = [];
-const WIDTH = canvas.width;
+const VIEW_WIDTH = canvas.width;
+const WORLD_WIDTH = 2500;
+const WIDTH = WORLD_WIDTH;
 const HEIGHT = canvas.height;
 const GRAVITY = 0.5;
+
+// Camera
+const camera = {
+    x: 0,
+    targetX: 0
+};
+
+// Last shot angle tracker
+let lastShot = {
+    x: 0,
+    y: 0,
+    angle: 0,
+    ownerIsPlayer: true,
+    active: false
+};
 
 // Players
 let turn = 0; // 0 for Player, 1 for CPU
@@ -613,6 +630,13 @@ function fireProjectile(tank) {
         }
     }
     
+    lastShot = {
+        x: spawnX,
+        y: spawnY,
+        angle: tank.angle,
+        ownerIsPlayer: tank.isPlayer,
+        active: true
+    };
     activeProjectiles.push(new Projectile(spawnX, spawnY, tank.angle, tank.power, tank.isPlayer, weaponType));
     updateHUD();
 }
@@ -867,18 +891,119 @@ function drawTrajectory() {
     ctx.setLineDash([]); // Reset dash
 }
 
+function updateCamera() {
+    if (currentState !== GAME_STATE.PLAYING && currentState !== GAME_STATE.GAMEOVER) {
+        camera.targetX = 0;
+        camera.x = 0;
+        return;
+    }
+
+    let targetX = 0;
+    const activeProj = activeProjectiles.find(p => p.active);
+    if (activeProj) {
+        targetX = activeProj.x - VIEW_WIDTH / 2;
+    } else {
+        const activeTank = (turn === 0) ? player : cpu;
+        if (activeTank) {
+            targetX = activeTank.x - VIEW_WIDTH / 2;
+        }
+    }
+
+    targetX = Math.max(0, Math.min(WORLD_WIDTH - VIEW_WIDTH, targetX));
+    camera.x += (targetX - camera.x) * 0.08;
+    if (Math.abs(camera.x - targetX) < 0.1) {
+        camera.x = targetX;
+    }
+}
+
+function drawMinimap() {
+    if (currentState !== GAME_STATE.PLAYING && currentState !== GAME_STATE.GAMEOVER) return;
+
+    const minimapW = 240;
+    const minimapH = 75;
+    const minimapX = (VIEW_WIDTH - minimapW) / 2;
+    const minimapY = 15;
+
+    // Draw background
+    ctx.fillStyle = 'rgba(11, 29, 40, 0.85)';
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.fillRect(minimapX, minimapY, minimapW, minimapH);
+    ctx.strokeRect(minimapX, minimapY, minimapW, minimapH);
+
+    // Scale helpers
+    const scaleX = minimapW / WORLD_WIDTH;
+    const scaleY = minimapH / HEIGHT;
+
+    // Draw topography (terrain)
+    ctx.strokeStyle = '#4ade80';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i < terrain.length; i++) {
+        const tx = minimapX + terrain[i].x * scaleX;
+        const ty = minimapY + (terrain[i].y / HEIGHT) * minimapH;
+        if (i === 0) {
+            ctx.moveTo(tx, ty);
+        } else {
+            ctx.lineTo(tx, ty);
+        }
+    }
+    ctx.stroke();
+
+    // Draw players
+    if (player) {
+        ctx.fillStyle = '#3b82f6';
+        ctx.fillRect(minimapX + player.x * scaleX - 3, minimapY + (player.y / HEIGHT) * minimapH - 3, 6, 6);
+    }
+    if (cpu) {
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(minimapX + cpu.x * scaleX - 3, minimapY + (cpu.y / HEIGHT) * minimapH - 3, 6, 6);
+    }
+
+    // Draw last shot angle indicator
+    if (lastShot.active) {
+        ctx.strokeStyle = lastShot.ownerIsPlayer ? 'rgba(59, 130, 246, 0.7)' : 'rgba(239, 68, 68, 0.7)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([3, 3]);
+        
+        const rad = lastShot.angle * Math.PI / 180;
+        const startX = minimapX + lastShot.x * scaleX;
+        const startY = minimapY + (lastShot.y / HEIGHT) * minimapH;
+        const indicatorLength = 35; // length of angle line on minimap
+        const endX = startX + Math.cos(rad) * indicatorLength;
+        const endY = startY - Math.sin(rad) * indicatorLength;
+
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    // Draw active projectile
+    const activeProj = activeProjectiles.find(p => p.active);
+    if (activeProj) {
+        ctx.fillStyle = '#ffffff';
+        if (Math.floor(Date.now() / 150) % 2 === 0) {
+            ctx.beginPath();
+            ctx.arc(minimapX + activeProj.x * scaleX, minimapY + (activeProj.y / HEIGHT) * minimapH, 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+}
+
 let menuFrameCount = 0;
 function drawMenuOverlay() {
     menuFrameCount++;
     
     // Dim background slightly
     ctx.fillStyle = 'rgba(11, 29, 40, 0.6)';
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    ctx.fillRect(0, 0, VIEW_WIDTH, HEIGHT);
     
     // Draw central retro menu box
     const boxW = 500;
     const boxH = 260;
-    const boxX = (WIDTH - boxW) / 2;
+    const boxX = (VIEW_WIDTH - boxW) / 2;
     const boxY = (HEIGHT - boxH) / 2;
     
     ctx.fillStyle = '#112233';
@@ -891,41 +1016,49 @@ function drawMenuOverlay() {
     ctx.font = '32px "Press Start 2P", cursive';
     ctx.fillStyle = 'var(--primary-color)';
     ctx.textAlign = 'center';
-    ctx.fillText('CANNON CHAOS', WIDTH / 2, boxY + 70);
+    ctx.fillText('CANNON CHAOS', VIEW_WIDTH / 2, boxY + 70);
     
     // Subtitle / tagline
     ctx.font = '14px "Press Start 2P", cursive';
     ctx.fillStyle = '#00ffcc';
-    ctx.fillText('8-BIT TANK WARFARE', WIDTH / 2, boxY + 120);
+    ctx.fillText('8-BIT TANK WARFARE', VIEW_WIDTH / 2, boxY + 120);
     
     // Pulsing "PRESS ANY KEY TO PLAY"
     const pulse = Math.floor(menuFrameCount / 30) % 2 === 0;
     if (pulse) {
         ctx.font = '16px "Press Start 2P", cursive';
         ctx.fillStyle = '#ffffff';
-        ctx.fillText('PRESS ANY KEY TO PLAY', WIDTH / 2, boxY + 190);
+        ctx.fillText('PRESS ANY KEY TO PLAY', VIEW_WIDTH / 2, boxY + 190);
     }
     
     // Footer / Touch notice
     ctx.font = '10px "Press Start 2P", cursive';
     ctx.fillStyle = '#aaaaaa';
-    ctx.fillText('(OR TAP / CLICK SCREEN)', WIDTH / 2, boxY + 225);
+    ctx.fillText('(OR TAP / CLICK SCREEN)', VIEW_WIDTH / 2, boxY + 225);
 }
 
 function gameLoop() {
     // Clear canvas
     ctx.fillStyle = '#87CEEB';
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    ctx.fillRect(0, 0, VIEW_WIDTH, HEIGHT);
 
     handleInput();
+    updateCamera();
+
+    ctx.save();
+    ctx.translate(-Math.round(camera.x), 0);
 
     drawTerrain();
     drawTrajectory();
     
-    player.update();
-    cpu.update();
-    player.draw();
-    cpu.draw();
+    if (player) {
+        player.update();
+        player.draw();
+    }
+    if (cpu) {
+        cpu.update();
+        cpu.draw();
+    }
 
     for (let i = activeProjectiles.length - 1; i >= 0; i--) {
         const proj = activeProjectiles[i];
@@ -936,6 +1069,10 @@ function gameLoop() {
             activeProjectiles.splice(i, 1);
         }
     }
+
+    ctx.restore();
+
+    drawMinimap();
 
     if (currentState === GAME_STATE.MENU) {
         drawMenuOverlay();
@@ -949,21 +1086,27 @@ function gameLoop() {
         requestAnimationFrame(gameLoop);
     } else {
         // Draw one last frame to show game over state
+        ctx.fillStyle = '#87CEEB';
+        ctx.fillRect(0, 0, VIEW_WIDTH, HEIGHT);
+        ctx.save();
+        ctx.translate(-Math.round(camera.x), 0);
         drawTerrain();
-        player.draw();
-        cpu.draw();
+        if (player) player.draw();
+        if (cpu) cpu.draw();
+        ctx.restore();
+        drawMinimap();
     }
 }
 
 function drawTerrainSelectOverlay() {
     // Dim background slightly
     ctx.fillStyle = 'rgba(11, 29, 40, 0.6)';
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    ctx.fillRect(0, 0, VIEW_WIDTH, HEIGHT);
     
     // Draw central retro menu box
     const boxW = 500;
     const boxH = 260;
-    const boxX = (WIDTH - boxW) / 2;
+    const boxX = (VIEW_WIDTH - boxW) / 2;
     const boxY = (HEIGHT - boxH) / 2;
     
     ctx.fillStyle = '#112233';
@@ -976,7 +1119,7 @@ function drawTerrainSelectOverlay() {
     ctx.font = '24px "Press Start 2P", cursive';
     ctx.fillStyle = 'var(--primary-color)';
     ctx.textAlign = 'center';
-    ctx.fillText('SELECT TERRAIN', WIDTH / 2, boxY + 50);
+    ctx.fillText('SELECT TERRAIN', VIEW_WIDTH / 2, boxY + 50);
     
     // Options
     ctx.font = '16px "Press Start 2P", cursive';
@@ -987,7 +1130,7 @@ function drawTerrainSelectOverlay() {
     if (selectedTerrainIndex === 0) {
         opt1Text = '▶ MOUNTAINS';
     }
-    ctx.fillText(opt1Text, WIDTH / 2, boxY + 110);
+    ctx.fillText(opt1Text, VIEW_WIDTH / 2, boxY + 110);
     
     // Option 2: Flat
     ctx.fillStyle = selectedTerrainIndex === 1 ? '#00ffcc' : '#ffffff';
@@ -995,23 +1138,23 @@ function drawTerrainSelectOverlay() {
     if (selectedTerrainIndex === 1) {
         opt2Text = '▶ FLAT';
     }
-    ctx.fillText(opt2Text, WIDTH / 2, boxY + 170);
+    ctx.fillText(opt2Text, VIEW_WIDTH / 2, boxY + 170);
     
     // Navigation info
     ctx.font = '10px "Press Start 2P", cursive';
     ctx.fillStyle = '#aaaaaa';
-    ctx.fillText('USE ARROWS TO SELECT, SPACE / CLICK TO PLAY', WIDTH / 2, boxY + 230);
+    ctx.fillText('USE ARROWS TO SELECT, SPACE / CLICK TO PLAY', VIEW_WIDTH / 2, boxY + 230);
 }
 
 function drawModeSelectOverlay() {
     // Dim background slightly
     ctx.fillStyle = 'rgba(11, 29, 40, 0.6)';
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    ctx.fillRect(0, 0, VIEW_WIDTH, HEIGHT);
     
     // Draw central retro menu box
     const boxW = 500;
     const boxH = 260;
-    const boxX = (WIDTH - boxW) / 2;
+    const boxX = (VIEW_WIDTH - boxW) / 2;
     const boxY = (HEIGHT - boxH) / 2;
     
     ctx.fillStyle = '#112233';
@@ -1024,7 +1167,7 @@ function drawModeSelectOverlay() {
     ctx.font = '24px "Press Start 2P", cursive';
     ctx.fillStyle = 'var(--primary-color)';
     ctx.textAlign = 'center';
-    ctx.fillText('SELECT MODE', WIDTH / 2, boxY + 50);
+    ctx.fillText('SELECT MODE', VIEW_WIDTH / 2, boxY + 50);
     
     // Options
     ctx.font = '16px "Press Start 2P", cursive';
@@ -1035,7 +1178,7 @@ function drawModeSelectOverlay() {
     if (selectedModeIndex === 0) {
         opt1Text = '▶ QUICK PLAY';
     }
-    ctx.fillText(opt1Text, WIDTH / 2, boxY + 110);
+    ctx.fillText(opt1Text, VIEW_WIDTH / 2, boxY + 110);
     
     // Option 2: Sandbox
     ctx.fillStyle = selectedModeIndex === 1 ? '#ef4444' : '#888888';
@@ -1043,12 +1186,12 @@ function drawModeSelectOverlay() {
     if (selectedModeIndex === 1) {
         opt2Text = '▶ SANDBOX (COMING SOON)';
     }
-    ctx.fillText(opt2Text, WIDTH / 2, boxY + 170);
+    ctx.fillText(opt2Text, VIEW_WIDTH / 2, boxY + 170);
     
     // Navigation info
     ctx.font = '10px "Press Start 2P", cursive';
     ctx.fillStyle = '#aaaaaa';
-    ctx.fillText('USE ARROWS TO SELECT, SPACE / CLICK TO PLAY', WIDTH / 2, boxY + 230);
+    ctx.fillText('USE ARROWS TO SELECT, SPACE / CLICK TO PLAY', VIEW_WIDTH / 2, boxY + 230);
 }
 
 function setupMobileControls() {
@@ -1165,7 +1308,7 @@ canvas.addEventListener('click', (e) => {
     
     const boxW = 500;
     const boxH = 260;
-    const boxX = (WIDTH - boxW) / 2;
+    const boxX = (VIEW_WIDTH - boxW) / 2;
     const boxY = (HEIGHT - boxH) / 2;
     
     if (currentState === GAME_STATE.MODE_SELECT) {
