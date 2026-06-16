@@ -944,7 +944,7 @@ function updateHUD() {
     
     let turnIndicator = document.getElementById('turn-indicator');
     if (currentState === GAME_STATE.GAMEOVER) {
-        turnIndicator.innerText = player.hp > 0 ? "PLAYER WINS!" : "CPU WINS!";
+        turnIndicator.innerText = player.hp > 0 ? "PLAYER 1 WINS!" : "CPU WINS!";
         turnIndicator.style.animation = "none";
         turnIndicator.style.color = player.hp > 0 ? "var(--player-color)" : "var(--cpu-color)";
     } else {
