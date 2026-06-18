@@ -558,6 +558,7 @@ class Projectile {
         this.ricochetCount = 0;
         this.splitCount = 0;
         this.splitTimer = 15;
+        this.isCrazyDave = (type === 'crazydave');
     }
 
     update() {
@@ -605,6 +606,7 @@ class Projectile {
                     child1.splitCount = nextSplitCount;
                     child1.splitTimer = 15;
                     child1.path = [...this.path];
+                    child1.isCrazyDave = this.isCrazyDave;
                     
                     const child2 = new Projectile(this.x, this.y, 0, 0, this.ownerIsPlayer, nextType);
                     child2.vx = this.vx - 1.2;
@@ -612,6 +614,7 @@ class Projectile {
                     child2.splitCount = nextSplitCount;
                     child2.splitTimer = 15;
                     child2.path = [...this.path];
+                    child2.isCrazyDave = this.isCrazyDave;
                     
                     activeProjectiles.push(child1, child2);
                     this.active = false;
@@ -758,7 +761,9 @@ class Projectile {
         
         // Spawn active explosion instead of destroying terrain immediately
         const craterRadius = this.type === 'nuke' ? 90 : (this.type === 'medium' ? 45 : 25);
-        activeExplosions.push(new Explosion(this.x, this.y, craterRadius, this.type, this.ownerIsPlayer, directHitTank));
+        const expl = new Explosion(this.x, this.y, craterRadius, this.type, this.ownerIsPlayer, directHitTank);
+        expl.isCrazyDave = this.isCrazyDave;
+        activeExplosions.push(expl);
 
         // Distance feedback calculation
         const target = this.ownerIsPlayer ? cpu : player;
@@ -844,6 +849,7 @@ class Explosion {
         this.elapsed = 0;
         this.done = false;
         this.directHitTank = directHitTank;
+        this.isCrazyDave = false;
 
         // Trigger procedural audio
         sfx.playExplosion(type);
@@ -919,7 +925,8 @@ class Explosion {
                 type: 'hit',
                 distance: lastShotDistance,
                 damage: lastShotDamageDealt,
-                timer: 70
+                timer: this.isCrazyDave ? 35 : 70,
+                isCrazyDave: this.isCrazyDave
             });
 
             checkTurnTransition();
@@ -2066,7 +2073,10 @@ function gameLoop() {
             // Firing/Damage Banner
             ctx.font = '16px "Press Start 2P", cursive';
             let distText = '';
-            if (activeBanner.distance <= 15) { // within 15px is direct hit
+            if (activeBanner.isCrazyDave) {
+                distText = 'CRAZY DAVE IMPACT';
+                ctx.fillStyle = '#ffcc00';
+            } else if (activeBanner.distance <= 15) { // within 15px is direct hit
                 distText = 'DIRECT HIT!';
                 ctx.fillStyle = pulse ? '#ffcc00' : '#ffffff';
             } else {
