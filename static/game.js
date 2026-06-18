@@ -364,6 +364,7 @@ let lastShotDistance = 0;
 let bannerQueue = [];
 let activeBanner = null;
 let turnTransitionTimeout = null;
+let hasFiredThisTurn = false;
 
 class Tank {
     constructor(x, color, isPlayer) {
@@ -974,6 +975,12 @@ class Explosion {
 function checkTurnTransition(delayMs = 0) {
     if (currentState !== GAME_STATE.PLAYING) return;
     const anyActive = activeProjectiles.some(p => p.active) || activeExplosions.some(e => !e.done);
+    
+    // Process falling positions only after all projectiles and explosions have settled
+    if (!anyActive) {
+        updateTankPositions();
+    }
+
     const anyFalling = player.isFalling || cpu.isFalling;
     const showingBanners = bannerQueue.length > 0 || activeBanner !== null;
     
@@ -1006,6 +1013,7 @@ function checkTurnTransition(delayMs = 0) {
 function performTurnTransition() {
     cameraFocusOverride = null; // Clear the camera focus override to pan to the new active player
     turn = turn === 0 ? 1 : 0;
+    hasFiredThisTurn = false;
     if (turn === 1) {
         setTimeout(cpuTurn, 1000);
     }
@@ -1025,7 +1033,6 @@ function destroyTerrain(impactX, impactY, radius) {
             }
         }
     }
-    updateTankPositions();
 }
 
 function updateTankPositions() {
@@ -1143,6 +1150,7 @@ function startGamePlay(terrainType) {
     activeExplosions = [];
     bannerQueue = [];
     activeBanner = null;
+    hasFiredThisTurn = false;
     setGameState(GAME_STATE.PLAYING);
     updateHUD();
 }
@@ -1308,6 +1316,10 @@ function handleInput() {
 }
 
 function fireProjectile(tank) {
+    if (tank.isPlayer) {
+        if (hasFiredThisTurn) return;
+        hasFiredThisTurn = true;
+    }
     lastShotDamageDealt = 0;
     lastFallDamageDealt = 0;
     const rad = tank.angle * Math.PI / 180;
