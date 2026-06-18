@@ -361,7 +361,8 @@ let cpuLastTrajectory = [];
 
 let cameraFocusOverride = null;
 let lastShotDistance = 0;
-let bannerFeedback = null;
+let bannerQueue = [];
+let activeBanner = null;
 let turnTransitionTimeout = null;
 
 class Tank {
@@ -477,9 +478,17 @@ class Tank {
                             lastFallDamageDealt += actualDmg;
                         }
                         updateHUD();
+
+                        if (actualDmg > 0) {
+                            bannerQueue.push({
+                                type: 'fall',
+                                tankName: this.isPlayer ? "PLAYER 1" : `CPU (${cpuDifficulty.toUpperCase()})`,
+                                damage: actualDmg,
+                                timer: 70
+                            });
+                        }
                     }
-                    // Check if we should switch turn now that falling has finished (wait 1500ms for player feedback)
-                    checkTurnTransition(1500);
+                    checkTurnTransition();
                 }
             }
         }
@@ -904,8 +913,15 @@ class Explosion {
             });
             updateHUD();
             
-            // Trigger the delayed turn switch after the explosion settles
-            checkTurnTransition(2000);
+            // Queue hit/miss feedback banner
+            bannerQueue.push({
+                type: 'hit',
+                distance: lastShotDistance,
+                damage: lastShotDamageDealt,
+                timer: 70
+            });
+
+            checkTurnTransition();
         }
     }
 
@@ -959,7 +975,9 @@ function checkTurnTransition(delayMs = 0) {
     if (currentState !== GAME_STATE.PLAYING) return;
     const anyActive = activeProjectiles.some(p => p.active) || activeExplosions.some(e => !e.done);
     const anyFalling = player.isFalling || cpu.isFalling;
-    if (!anyActive && !anyFalling) {
+    const showingBanners = bannerQueue.length > 0 || activeBanner !== null;
+    
+    if (!anyActive && !anyFalling && !showingBanners) {
         if (player.hp <= 0 || cpu.hp <= 0) {
             if (turnTransitionTimeout) clearTimeout(turnTransitionTimeout);
             setGameState(GAME_STATE.GAMEOVER);
@@ -973,7 +991,8 @@ function checkTurnTransition(delayMs = 0) {
                 if (currentState !== GAME_STATE.PLAYING) return;
                 const stillActive = activeProjectiles.some(p => p.active) || activeExplosions.some(e => !e.done);
                 const stillFalling = player.isFalling || cpu.isFalling;
-                if (!stillActive && !stillFalling) {
+                const stillBanners = bannerQueue.length > 0 || activeBanner !== null;
+                if (!stillActive && !stillFalling && !stillBanners) {
                     performTurnTransition();
                 }
             }, delayMs);
@@ -985,13 +1004,6 @@ function checkTurnTransition(delayMs = 0) {
 }
 
 function performTurnTransition() {
-    bannerFeedback = {
-        distance: lastShotDistance,
-        damage: lastShotDamageDealt,
-        fallDamage: lastFallDamageDealt,
-        timer: 60
-    };
-
     turn = turn === 0 ? 1 : 0;
     if (turn === 1) {
         setTimeout(cpuTurn, 1000);
@@ -1128,6 +1140,8 @@ function startGamePlay(terrainType) {
     camera.targetY = 0;
     activeProjectiles = [];
     activeExplosions = [];
+    bannerQueue = [];
+    activeBanner = null;
     setGameState(GAME_STATE.PLAYING);
     updateHUD();
 }
@@ -1156,6 +1170,8 @@ function initGame() {
     camera.targetY = 0;
     activeProjectiles = [];
     activeExplosions = [];
+    bannerQueue = [];
+    activeBanner = null;
     updateHUD();
     gameLoop();
 }
@@ -1322,24 +1338,15 @@ function fireProjectile(tank) {
         updateHUD();
         
         // Visual feedback banner for shield activation
-        bannerFeedback = {
-            shieldOnly: true,
+        bannerQueue.push({
+            type: 'shield',
             tankName: tank.isPlayer ? "PLAYER 1" : `CPU (${cpuDifficulty.toUpperCase()})`,
-            timer: 60
-        };
+            timer: 70
+        });
         sfx.playShield();
         
-        // Advance turn since no projectile was fired (wait 1500ms delay for feedback readability)
-        if (turnTransitionTimeout) clearTimeout(turnTransitionTimeout);
-        turnTransitionTimeout = setTimeout(() => {
-            turn = turn === 0 ? 1 : 0;
-            if (turn === 1) {
-                setTimeout(cpuTurn, 1000);
-            }
-            updateHUD();
-        }, 1500);
-        
         updateHUD();
+        checkTurnTransition();
         return;
     }
     
@@ -2006,7 +2013,11 @@ function gameLoop() {
     ctx.restore();
 
     // Draw center screen flash banner (outside camera transform so it stays fixed on screen)
-    if (bannerFeedback && bannerFeedback.timer > 0) {
+    if (!activeBanner && bannerQueue.length > 0) {
+        activeBanner = bannerQueue.shift();
+    }
+
+    if (activeBanner) {
         const bannerH = 110;
         const bannerY = HEIGHT / 2 - bannerH / 2;
         
@@ -2023,43 +2034,52 @@ function gameLoop() {
         ctx.stroke();
         
         ctx.textAlign = 'center';
-        const pulse = Math.floor(bannerFeedback.timer / 10) % 2 === 0;
+        const pulse = Math.floor(activeBanner.timer / 10) % 2 === 0;
         
-        if (bannerFeedback.shieldOnly) {
+        if (activeBanner.type === 'shield') {
             // Shield Activation Banner
             ctx.font = '16px "Press Start 2P", cursive';
             ctx.fillStyle = '#00ffff';
-            ctx.fillText(`${bannerFeedback.tankName} SHIELDED!`, VIEW_WIDTH / 2, bannerY + 45);
+            ctx.fillText(`${activeBanner.tankName} SHIELDED!`, VIEW_WIDTH / 2, bannerY + 45);
             
             ctx.font = '10px "Press Start 2P", cursive';
             ctx.fillStyle = '#ffffff';
             ctx.fillText('+50 SHIELD HP ACTIVATED', VIEW_WIDTH / 2, bannerY + 75);
+        } else if (activeBanner.type === 'fall') {
+            // Fall Damage Banner
+            ctx.font = '16px "Press Start 2P", cursive';
+            ctx.fillStyle = '#ef4444';
+            ctx.fillText(`${activeBanner.tankName} FELL!`, VIEW_WIDTH / 2, bannerY + 45);
+            
+            ctx.font = '11px "Press Start 2P", cursive';
+            ctx.fillStyle = '#ffcc00';
+            ctx.fillText(`FALL DAMAGE: -${activeBanner.damage} HP`, VIEW_WIDTH / 2, bannerY + 75);
         } else {
             // Firing/Damage Banner
             ctx.font = '16px "Press Start 2P", cursive';
             let distText = '';
-            if (bannerFeedback.distance <= 15) { // within 15px is direct hit
+            if (activeBanner.distance <= 15) { // within 15px is direct hit
                 distText = 'DIRECT HIT!';
                 ctx.fillStyle = pulse ? '#ffcc00' : '#ffffff';
             } else {
-                distText = `MISSED BY ${bannerFeedback.distance}px`;
+                distText = `MISSED BY ${activeBanner.distance}px`;
                 ctx.fillStyle = '#ffffff';
             }
-            ctx.fillText(distText, VIEW_WIDTH / 2, bannerY + 35);
+            ctx.fillText(distText, VIEW_WIDTH / 2, bannerY + 45);
             
             ctx.font = '11px "Press Start 2P", cursive';
-            let hitDmgText = `HIT DAMAGE: ${bannerFeedback.damage > 0 ? '-' + bannerFeedback.damage : '0'} HP`;
-            ctx.fillStyle = bannerFeedback.damage > 0 ? '#ef4444' : '#aaaaaa';
-            ctx.fillText(hitDmgText, VIEW_WIDTH / 2, bannerY + 65);
-
-            let fallDmgText = `FALL DAMAGE: ${bannerFeedback.fallDamage > 0 ? '-' + bannerFeedback.fallDamage : '0'} HP`;
-            ctx.fillStyle = bannerFeedback.fallDamage > 0 ? '#ef4444' : '#aaaaaa';
-            ctx.fillText(fallDmgText, VIEW_WIDTH / 2, bannerY + 90);
+            let hitDmgText = `HIT DAMAGE: ${activeBanner.damage > 0 ? '-' + activeBanner.damage : '0'} HP`;
+            ctx.fillStyle = activeBanner.damage > 0 ? '#ef4444' : '#aaaaaa';
+            ctx.fillText(hitDmgText, VIEW_WIDTH / 2, bannerY + 75);
         }
         
-        bannerFeedback.timer--;
-        if (bannerFeedback.timer <= 0) {
-            bannerFeedback = null;
+        activeBanner.timer--;
+        if (activeBanner.timer <= 0) {
+            activeBanner = null;
+            if (bannerQueue.length === 0) {
+                // All banners finished, trigger turn transition check!
+                checkTurnTransition(800);
+            }
         }
     }
 
