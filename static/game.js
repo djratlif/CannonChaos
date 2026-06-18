@@ -407,9 +407,42 @@ class Tank {
         this.nukeShots = 1;
         this.crazyDaveShots = 2;
         this.shieldHp = 0;
+        this.isDestroyed = false;
+    }
+
+    reduceHp(amount) {
+        if (this.isDestroyed || this.hp <= 0) return;
+        this.hp -= amount;
+        if (this.hp <= 0) {
+            this.hp = 0;
+            this.explodeTank();
+        }
+    }
+
+    explodeTank() {
+        this.isDestroyed = true;
+        
+        // Spawn 65 tank-colored particles
+        const numParticles = 65;
+        for (let i = 0; i < numParticles; i++) {
+            const p = new DebrisParticle(this.x, this.y + 7, this.color);
+            p.vx = (Math.random() * 2 - 1) * 6.5;
+            p.vy = (Math.random() * 2.5 - 3) * 6.5; // shoot upwards
+            p.size = Math.floor(Math.random() * 4) + 3; // larger 3px to 6px
+            p.gravity = 0.16;
+            p.decay = 0.01 + Math.random() * 0.012;
+            activeParticles.push(p);
+        }
+        
+        // Play explosion audio
+        sfx.playExplosion('nuke');
+        
+        // Screen shake
+        startScreenShake(35, 14);
     }
 
     update() {
+        if (this.isDestroyed) return;
         if (this.isFalling) {
             if (this.hoverTimer > 0) {
                 this.hoverTimer--;
@@ -434,8 +467,7 @@ class Tank {
                             }
                         }
                         if (damage > 0) {
-                            this.hp -= damage;
-                            if (this.hp < 0) this.hp = 0;
+                            this.reduceHp(damage);
                         }
                         const newHp = this.hp + this.shieldHp;
                         const actualDmg = oldHp - newHp;
@@ -445,11 +477,6 @@ class Tank {
                             lastFallDamageDealt += actualDmg;
                         }
                         updateHUD();
-                        
-                        if (this.hp <= 0) {
-                            setGameState(GAME_STATE.GAMEOVER);
-                            updateHUD();
-                        }
                     }
                     // Check if we should switch turn now that falling has finished (wait 1500ms for player feedback)
                     checkTurnTransition(1500);
@@ -459,6 +486,7 @@ class Tank {
     }
 
     draw() {
+        if (this.isDestroyed) return;
         // Draw barrel starting from center of triangle (drawn first so base is hidden behind body)
         ctx.strokeStyle = '#333';
         ctx.lineWidth = 4;
@@ -676,8 +704,7 @@ class Projectile {
                 if (this.type === 'ricochet' && this.ricochetCount < 3) {
                     this.ricochetCount++;
                     const oldTargetHp = target.hp + target.shieldHp;
-                    target.hp -= 15; // Lower damage for intermediate ricochet hits
-                    if (target.hp < 0) target.hp = 0;
+                    target.reduceHp(15); // Lower damage for intermediate ricochet hits
                     const newTargetHp = target.hp + target.shieldHp;
                     const targetIsOpponent = (this.ownerIsPlayer && target === cpu) || (!this.ownerIsPlayer && target === player);
                     if (targetIsOpponent) {
@@ -699,8 +726,7 @@ class Projectile {
                         damage = 50;
                     }
                     const oldTargetHp = target.hp + target.shieldHp;
-                    target.hp -= damage;
-                    if (target.hp < 0) target.hp = 0;
+                    target.reduceHp(damage);
                     const newTargetHp = target.hp + target.shieldHp;
                     const targetIsOpponent = (this.ownerIsPlayer && target === cpu) || (!this.ownerIsPlayer && target === player);
                     if (targetIsOpponent) {
@@ -861,13 +887,12 @@ class Explosion {
                             if (tank.shieldHp >= dmg) {
                                 tank.shieldHp -= dmg;
                             } else {
-                                tank.hp -= (dmg - tank.shieldHp);
+                                tank.reduceHp(dmg - tank.shieldHp);
                                 tank.shieldHp = 0;
                             }
                         } else {
-                            tank.hp -= dmg;
+                            tank.reduceHp(dmg);
                         }
-                        if (tank.hp < 0) tank.hp = 0;
                         const newTargetHp = tank.hp + tank.shieldHp;
                         
                         const targetIsOpponent = (this.ownerIsPlayer && tank === cpu) || (!this.ownerIsPlayer && tank === player);
@@ -994,42 +1019,46 @@ function updateTankPositions() {
     if (!player || !cpu) return;
     
     // Player
-    for (let i = 0; i < terrain.length; i++) {
-        if (terrain[i].x >= player.x) {
-            const nextTargetY = terrain[i].y - player.height;
-            if (nextTargetY > player.y) {
-                if (!player.isFalling) {
+    if (!player.isDestroyed) {
+        for (let i = 0; i < terrain.length; i++) {
+            if (terrain[i].x >= player.x) {
+                const nextTargetY = terrain[i].y - player.height;
+                if (nextTargetY > player.y) {
+                    if (!player.isFalling) {
+                        player.targetY = nextTargetY;
+                        player.fallStartY = player.y; // Record start of fall
+                        player.isFalling = true;
+                        player.hoverTimer = 60; // 60 frames = 1 second at 60fps
+                    }
+                } else {
+                    player.y = nextTargetY;
                     player.targetY = nextTargetY;
-                    player.fallStartY = player.y; // Record start of fall
-                    player.isFalling = true;
-                    player.hoverTimer = 60; // 60 frames = 1 second at 60fps
+                    player.isFalling = false;
                 }
-            } else {
-                player.y = nextTargetY;
-                player.targetY = nextTargetY;
-                player.isFalling = false;
+                break;
             }
-            break;
         }
     }
     
     // CPU
-    for (let i = 0; i < terrain.length; i++) {
-        if (terrain[i].x >= cpu.x) {
-            const nextTargetY = terrain[i].y - cpu.height;
-            if (nextTargetY > cpu.y) {
-                if (!cpu.isFalling) {
+    if (!cpu.isDestroyed) {
+        for (let i = 0; i < terrain.length; i++) {
+            if (terrain[i].x >= cpu.x) {
+                const nextTargetY = terrain[i].y - cpu.height;
+                if (nextTargetY > cpu.y) {
+                    if (!cpu.isFalling) {
+                        cpu.targetY = nextTargetY;
+                        cpu.fallStartY = cpu.y; // Record start of fall
+                        cpu.isFalling = true;
+                        cpu.hoverTimer = 60; // 60 frames = 1 second at 60fps
+                    }
+                } else {
+                    cpu.y = nextTargetY;
                     cpu.targetY = nextTargetY;
-                    cpu.fallStartY = cpu.y; // Record start of fall
-                    cpu.isFalling = true;
-                    cpu.hoverTimer = 60; // 60 frames = 1 second at 60fps
+                    cpu.isFalling = false;
                 }
-            } else {
-                cpu.y = nextTargetY;
-                cpu.targetY = nextTargetY;
-                cpu.isFalling = false;
+                break;
             }
-            break;
         }
     }
 }
