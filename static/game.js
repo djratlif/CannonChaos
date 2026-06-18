@@ -1343,14 +1343,13 @@ function fireProjectile(tank) {
         if (hasFiredThisTurn) return;
         hasFiredThisTurn = true;
     }
+    let weaponType = tank.selectedWeapon || 'standard';
     lastShotDamageDealt = 0;
     lastFallDamageDealt = 0;
     currentShotIsCrazyDave = (weaponType === 'crazydave');
     const rad = tank.angle * Math.PI / 180;
     const spawnX = tank.x + Math.cos(rad) * 20;
     const spawnY = tank.y + 7 - Math.sin(rad) * 20;
-    
-    let weaponType = tank.selectedWeapon || 'standard';
     
     // Deduct shot count and play shooting sounds
     if (weaponType === 'medium') {
