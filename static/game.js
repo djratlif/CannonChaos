@@ -1004,6 +1004,7 @@ function checkTurnTransition(delayMs = 0) {
 }
 
 function performTurnTransition() {
+    cameraFocusOverride = null; // Clear the camera focus override to pan to the new active player
     turn = turn === 0 ? 1 : 0;
     if (turn === 1) {
         setTimeout(cpuTurn, 1000);
@@ -1763,11 +1764,6 @@ function updateCamera() {
         targetY = cameraFocusOverride.y - HEIGHT / 2;
         targetY = Math.min(0, targetY);
         lerpFactor = 0.08; // Normal speed to focus on impact
-
-        cameraFocusOverride.duration--;
-        if (cameraFocusOverride.duration <= 0) {
-            cameraFocusOverride = null;
-        }
     } else {
         const activeProj = activeProjectiles.find(p => p.active);
         if (activeProj) {
