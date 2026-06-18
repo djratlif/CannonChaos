@@ -365,6 +365,7 @@ let bannerQueue = [];
 let activeBanner = null;
 let turnTransitionTimeout = null;
 let hasFiredThisTurn = false;
+let currentShotIsCrazyDave = false;
 
 class Tank {
     constructor(x, color, isPlayer) {
@@ -921,13 +922,14 @@ class Explosion {
             updateHUD();
             
             // Queue hit/miss feedback banner
-            bannerQueue.push({
-                type: 'hit',
-                distance: lastShotDistance,
-                damage: lastShotDamageDealt,
-                timer: this.isCrazyDave ? 35 : 70,
-                isCrazyDave: this.isCrazyDave
-            });
+            if (!this.isCrazyDave) {
+                bannerQueue.push({
+                    type: 'hit',
+                    distance: lastShotDistance,
+                    damage: lastShotDamageDealt,
+                    timer: 70
+                });
+            }
 
             checkTurnTransition();
         }
@@ -985,6 +987,16 @@ function checkTurnTransition(delayMs = 0) {
     
     // Process falling positions only after all projectiles and explosions have settled
     if (!anyActive) {
+        if (currentShotIsCrazyDave) {
+            currentShotIsCrazyDave = false;
+            bannerQueue.push({
+                type: 'hit',
+                distance: lastShotDistance,
+                damage: lastShotDamageDealt,
+                timer: 55,
+                isCrazyDave: true
+            });
+        }
         updateTankPositions();
     }
 
@@ -1159,6 +1171,7 @@ function startGamePlay(terrainType) {
     bannerQueue = [];
     activeBanner = null;
     hasFiredThisTurn = false;
+    currentShotIsCrazyDave = false;
     setGameState(GAME_STATE.PLAYING);
     updateHUD();
 }
@@ -1190,6 +1203,7 @@ function initGame() {
     activeExplosions = [];
     bannerQueue = [];
     activeBanner = null;
+    currentShotIsCrazyDave = false;
     updateHUD();
     gameLoop();
 }
@@ -1331,6 +1345,7 @@ function fireProjectile(tank) {
     }
     lastShotDamageDealt = 0;
     lastFallDamageDealt = 0;
+    currentShotIsCrazyDave = (weaponType === 'crazydave');
     const rad = tank.angle * Math.PI / 180;
     const spawnX = tank.x + Math.cos(rad) * 20;
     const spawnY = tank.y + 7 - Math.sin(rad) * 20;
