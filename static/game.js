@@ -1,6 +1,288 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+// Procedural 8-Bit Audio System using Web Audio API
+class AudioFX {
+    constructor() {
+        this.ctx = null;
+    }
+
+    init() {
+        if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    }
+
+    playClick() {
+        this.init();
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.08);
+
+        gain.gain.setValueAtTime(0.04, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.08);
+    }
+
+    playShoot(type = 'standard') {
+        this.init();
+        if (!this.ctx) return;
+        
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        if (type === 'nuke') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(350, this.ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(60, this.ctx.currentTime + 0.6);
+
+            gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.6);
+            osc.start();
+            osc.stop(this.ctx.currentTime + 0.6);
+        } else if (type === 'crazydave') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+            osc.frequency.linearRampToValueAtTime(800, this.ctx.currentTime + 0.1);
+            osc.frequency.linearRampToValueAtTime(300, this.ctx.currentTime + 0.3);
+
+            gain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+            osc.start();
+            osc.stop(this.ctx.currentTime + 0.3);
+        } else if (type === 'medium') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(500, this.ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(120, this.ctx.currentTime + 0.35);
+
+            gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.35);
+            osc.start();
+            osc.stop(this.ctx.currentTime + 0.35);
+        } else if (type === 'bubble') {
+            this.playShield();
+        } else {
+            // Standard / Double / Ricochet
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(700, this.ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(180, this.ctx.currentTime + 0.2);
+
+            gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+            osc.start();
+            osc.stop(this.ctx.currentTime + 0.2);
+        }
+    }
+
+    playExplosion(type = 'standard') {
+        this.init();
+        if (!this.ctx) return;
+
+        const duration = type === 'nuke' ? 1.6 : (type === 'medium' ? 0.7 : 0.45);
+        const bufferSize = this.ctx.sampleRate * duration;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        
+        const startFreq = type === 'nuke' ? 350 : (type === 'medium' ? 600 : 750);
+        const endFreq = type === 'nuke' ? 30 : (type === 'medium' ? 60 : 80);
+        
+        filter.frequency.setValueAtTime(startFreq, this.ctx.currentTime);
+        filter.frequency.exponentialRampToValueAtTime(endFreq, this.ctx.currentTime + duration * 0.85);
+
+        const gain = this.ctx.createGain();
+        const startGain = type === 'nuke' ? 0.35 : (type === 'medium' ? 0.25 : 0.18);
+        gain.gain.setValueAtTime(startGain, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        noise.start();
+    }
+
+    playShield() {
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const notes = [261.63, 329.63, 392.00, 523.25]; // C major arpeggio
+        notes.forEach((freq, index) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + index * 0.07);
+            osc.frequency.exponentialRampToValueAtTime(freq * 1.6, now + index * 0.07 + 0.12);
+            
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.06, now + index * 0.07 + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.005, now + index * 0.07 + 0.22);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+
+            osc.start(now + index * 0.07);
+            osc.stop(now + index * 0.07 + 0.25);
+        });
+    }
+
+    playVictory() {
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const melody = [
+            { f: 523.25, d: 0.12 }, // C5
+            { f: 523.25, d: 0.12 }, // C5
+            { f: 523.25, d: 0.12 }, // C5
+            { f: 523.25, d: 0.30 }, // C5
+            { f: 415.30, d: 0.30 }, // G#4
+            { f: 466.16, d: 0.30 }, // A#4
+            { f: 523.25, d: 0.12 }, // C5
+            { f: 466.16, d: 0.12 }, // A#4
+            { f: 523.25, d: 0.65 }, // C5
+        ];
+
+        let timeOffset = 0;
+        melody.forEach(note => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(note.f, now + timeOffset);
+            
+            gain.gain.setValueAtTime(0, now + timeOffset);
+            gain.gain.linearRampToValueAtTime(0.07, now + timeOffset + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.005, now + timeOffset + note.d - 0.02);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+
+            osc.start(now + timeOffset);
+            osc.stop(now + timeOffset + note.d);
+
+            timeOffset += note.d + 0.03;
+        });
+    }
+}
+const sfx = new AudioFX();
+
+// Particle Debris System
+class DebrisParticle {
+    constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.vx = (Math.random() * 2 - 1) * 3.5;
+        this.vy = (Math.random() * 2.5 - 2) * 3.5;
+        this.size = Math.floor(Math.random() * 3) + 2; // 2px to 4px
+        this.color = color;
+        this.gravity = 0.18;
+        this.alpha = 1;
+        this.decay = 0.015 + Math.random() * 0.02;
+    }
+
+    update() {
+        this.vy += this.gravity;
+        this.x += this.vx;
+        this.y += this.vy;
+        this.alpha -= this.decay;
+        return this.alpha > 0;
+    }
+
+    draw() {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, this.size, this.size);
+        ctx.restore();
+    }
+}
+let activeParticles = [];
+
+// Scrolling Pixel Clouds
+class ScrollCloud {
+    constructor(x, y, speed, width) {
+        this.x = x;
+        this.y = y;
+        this.speed = speed;
+        this.width = width;
+        this.height = width * 0.38;
+    }
+
+    update() {
+        this.x -= this.speed;
+        if (this.x + this.width < 0) {
+            this.x = WORLD_WIDTH;
+            this.y = 25 + Math.random() * 110;
+        }
+    }
+
+    draw() {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+        ctx.fillRect(this.x + this.width * 0.15, this.y - this.height * 0.35, this.width * 0.7, this.height * 1.35);
+        ctx.fillRect(this.x + this.width * 0.3, this.y - this.height * 0.6, this.width * 0.4, this.height * 1.6);
+    }
+}
+let clouds = [];
+
+function initClouds() {
+    clouds = [];
+    for (let i = 0; i < 7; i++) {
+        clouds.push(new ScrollCloud(
+            Math.random() * WORLD_WIDTH,
+            25 + Math.random() * 110,
+            0.08 + Math.random() * 0.18,
+            65 + Math.random() * 70
+        ));
+    }
+}
+
+// Parallax Mountains
+let mountainPeaks = [];
+function initMountains() {
+    mountainPeaks = [];
+    let y = HEIGHT - 180;
+    let slope = 0;
+    for (let x = 0; x <= WORLD_WIDTH + 100; x += 35) {
+        if (Math.random() > 0.55) {
+            slope = Math.random() * 30 - 15;
+        }
+        y += slope;
+        y = Math.max(HEIGHT - 260, Math.min(HEIGHT - 130, y));
+        mountainPeaks.push({ x: x, y: y });
+    }
+}
+
+// Screen Shake variables
+let shakeDuration = 0;
+let shakeIntensity = 0;
+function startScreenShake(duration, intensity) {
+    shakeDuration = duration;
+    shakeIntensity = intensity;
+}
+
 // Game State
 const GAME_STATE = {
     MENU: 'MENU',
@@ -29,6 +311,13 @@ function setGameState(state) {
     const container = document.querySelector('.game-container');
     if (container) {
         container.className = `game-container state-${state.toLowerCase()}`;
+    }
+    if (state === GAME_STATE.GAMEOVER) {
+        if (player && player.hp > 0) {
+            sfx.playVictory();
+        } else {
+            sfx.playExplosion('nuke');
+        }
     }
 }
 
@@ -162,8 +451,8 @@ class Tank {
                             updateHUD();
                         }
                     }
-                    // Check if we should switch turn now that falling has finished
-                    checkTurnTransition();
+                    // Check if we should switch turn now that falling has finished (wait 1500ms for player feedback)
+                    checkTurnTransition(1500);
                 }
             }
         }
@@ -519,6 +808,23 @@ class Explosion {
         this.elapsed = 0;
         this.done = false;
         this.directHitTank = directHitTank;
+
+        // Trigger procedural audio
+        sfx.playExplosion(type);
+
+        // Trigger screen shake
+        const shakeD = type === 'nuke' ? 30 : (type === 'medium' ? 15 : 8);
+        const shakeI = type === 'nuke' ? 12 : (type === 'medium' ? 6 : 3);
+        startScreenShake(shakeD, shakeI);
+
+        // Spawn explosion particles
+        const colors = type === 'nuke' 
+            ? ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#ffffff', '#a855f7'] 
+            : ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#ffffff'];
+        const numParticles = type === 'nuke' ? 45 : (type === 'medium' ? 22 : 12);
+        for (let i = 0; i < numParticles; i++) {
+            activeParticles.push(new DebrisParticle(this.x, this.y, colors[Math.floor(Math.random() * colors.length)]));
+        }
     }
 
     update() {
@@ -774,6 +1080,9 @@ function generateTerrain(type = 'mountains') {
 
 function startGamePlay(terrainType) {
     generateTerrain(terrainType);
+    initClouds();
+    initMountains();
+    activeParticles = [];
     player = new Tank(100, '#3b82f6', true);
     cpu = new Tank(WIDTH - 100, '#ef4444', false);
     cpu.lastShotTooShort = null;
@@ -797,6 +1106,9 @@ function startGamePlay(terrainType) {
 function initGame() {
     // Generate standard mountains initially as a placeholder before mode/terrain selects
     generateTerrain('mountains');
+    initClouds();
+    initMountains();
+    activeParticles = [];
     player = new Tank(100, '#3b82f6', true);
     cpu = new Tank(WIDTH - 100, '#ef4444', false);
     turn = 0;
@@ -836,6 +1148,15 @@ const touchKeys = {
 };
 
 window.addEventListener('keydown', (e) => {
+    sfx.init();
+    
+    // Play a menu selection sound on any key during menu navigation
+    if (currentState === GAME_STATE.MENU || currentState === GAME_STATE.MODE_SELECT || 
+        currentState === GAME_STATE.TERRAIN_SELECT || currentState === GAME_STATE.DIFFICULTY_SELECT || 
+        currentState === GAME_STATE.GAMEOVER) {
+        sfx.playClick();
+    }
+
     if (currentState === GAME_STATE.MENU) {
         setGameState(GAME_STATE.MODE_SELECT);
         updateHUD();
@@ -947,50 +1268,55 @@ function fireProjectile(tank) {
     const spawnX = tank.x + Math.cos(rad) * 20;
     const spawnY = tank.y + 7 - Math.sin(rad) * 20;
     
-    let weaponType = 'standard';
-    if (tank.isPlayer) {
-        weaponType = tank.selectedWeapon;
-        if (weaponType === 'medium') {
-            tank.mediumShots--;
-            if (tank.mediumShots <= 0) {
-                tank.selectedWeapon = 'standard';
-            }
-        } else if (weaponType === 'double') {
-            tank.doubleShots--;
-            if (tank.doubleShots <= 0) {
-                tank.selectedWeapon = 'standard';
-            }
-        } else if (weaponType === 'ricochet') {
-            tank.ricochetShots--;
-            if (tank.ricochetShots <= 0) {
-                tank.selectedWeapon = 'standard';
-            }
-        } else if (weaponType === 'nuke') {
-            tank.nukeShots--;
-            if (tank.nukeShots <= 0) {
-                tank.selectedWeapon = 'standard';
-            }
-        } else if (weaponType === 'crazydave') {
-            tank.crazyDaveShots--;
-            if (tank.crazyDaveShots <= 0) {
-                tank.selectedWeapon = 'standard';
-            }
-        } else if (weaponType === 'bubble') {
-            tank.bubbleShots--;
-            tank.shieldHp = 50;
-            tank.selectedWeapon = 'standard';
-            updateHUD();
-            
-            // Advance turn since no projectile was fired
+    let weaponType = tank.selectedWeapon || 'standard';
+    
+    // Deduct shot count and play shooting sounds
+    if (weaponType === 'medium') {
+        tank.mediumShots--;
+        if (tank.mediumShots <= 0) tank.selectedWeapon = 'standard';
+    } else if (weaponType === 'double') {
+        tank.doubleShots--;
+        if (tank.doubleShots <= 0) tank.selectedWeapon = 'standard';
+    } else if (weaponType === 'ricochet') {
+        tank.ricochetShots--;
+        if (tank.ricochetShots <= 0) tank.selectedWeapon = 'standard';
+    } else if (weaponType === 'nuke') {
+        tank.nukeShots--;
+        if (tank.nukeShots <= 0) tank.selectedWeapon = 'standard';
+    } else if (weaponType === 'crazydave') {
+        tank.crazyDaveShots--;
+        if (tank.crazyDaveShots <= 0) tank.selectedWeapon = 'standard';
+    } else if (weaponType === 'bubble') {
+        tank.bubbleShots--;
+        tank.shieldHp = 50;
+        tank.selectedWeapon = 'standard';
+        updateHUD();
+        
+        // Visual feedback banner for shield activation
+        bannerFeedback = {
+            shieldOnly: true,
+            tankName: tank.isPlayer ? "PLAYER 1" : `CPU (${cpuDifficulty.toUpperCase()})`,
+            timer: 60
+        };
+        sfx.playShield();
+        
+        // Advance turn since no projectile was fired (wait 1500ms delay for feedback readability)
+        if (turnTransitionTimeout) clearTimeout(turnTransitionTimeout);
+        turnTransitionTimeout = setTimeout(() => {
             turn = turn === 0 ? 1 : 0;
             if (turn === 1) {
                 setTimeout(cpuTurn, 1000);
             }
             updateHUD();
-            return;
-        }
+        }, 1500);
+        
+        updateHUD();
+        return;
     }
     
+    // Play shoot sound
+    sfx.playShoot(weaponType);
+
     if (tank.isPlayer) {
         playerLastShot = {
             x: spawnX,
@@ -1012,6 +1338,25 @@ function fireProjectile(tank) {
 
 function cpuTurn() {
     if (currentState !== GAME_STATE.PLAYING) return;
+    
+    // Intelligent Weapon/Shield selection for CPU
+    if (cpu.shieldHp <= 0 && cpu.bubbleShots > 0 && (cpu.hp < 40 || Math.random() < 0.25)) {
+        cpu.selectedWeapon = 'bubble';
+    } else {
+        const options = ['standard'];
+        if (cpu.nukeShots > 0) options.push('nuke');
+        if (cpu.crazyDaveShots > 0) options.push('crazydave');
+        if (cpu.mediumShots > 0) options.push('medium');
+        if (cpu.doubleShots > 0) options.push('double');
+        if (cpu.ricochetShots > 0) options.push('ricochet');
+
+        const selectChance = cpuDifficulty === 'hard' ? 0.65 : (cpuDifficulty === 'medium' ? 0.35 : 0.1);
+        if (options.length > 1 && Math.random() < selectChance) {
+            cpu.selectedWeapon = options[Math.floor(Math.random() * (options.length - 1)) + 1];
+        } else {
+            cpu.selectedWeapon = 'standard';
+        }
+    }
     
     let baseAngle = 135;
     let basePower = 27;
@@ -1290,6 +1635,29 @@ function updateHUD() {
     }
 }
 
+function drawSky() {
+    const gradient = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+    gradient.addColorStop(0, '#7dd3fc'); // Light sky blue (Sky 300)
+    gradient.addColorStop(0.6, '#bae6fd'); // Soft pale blue (Sky 200)
+    gradient.addColorStop(1, '#f0f9ff'); // Soft horizon white/blue (Sky 50)
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, VIEW_WIDTH, HEIGHT);
+}
+
+function drawMountains() {
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.25)'; // Semitransparent sky mountain color
+    ctx.beginPath();
+    ctx.moveTo(0, HEIGHT);
+    for (let i = 0; i < mountainPeaks.length; i++) {
+        const px = mountainPeaks[i].x - camera.x * 0.3;
+        const py = mountainPeaks[i].y - camera.y * 0.3;
+        ctx.lineTo(px, py);
+    }
+    ctx.lineTo(WORLD_WIDTH, HEIGHT);
+    ctx.closePath();
+    ctx.fill();
+}
+
 function drawTerrain() {
     ctx.fillStyle = '#4ade80'; // 8-bit green grass
     ctx.beginPath();
@@ -1538,15 +1906,32 @@ function drawMenuOverlay() {
 }
 
 function gameLoop() {
-    // Clear canvas
-    ctx.fillStyle = '#87CEEB';
-    ctx.fillRect(0, 0, VIEW_WIDTH, HEIGHT);
+    // Draw sky gradient (static screen background)
+    drawSky();
 
     handleInput();
     updateCamera();
 
     ctx.save();
-    ctx.translate(-Math.round(camera.x), -Math.round(camera.y));
+    
+    // Apply camera shake if active
+    let dx = 0;
+    let dy = 0;
+    if (shakeDuration > 0) {
+        dx = (Math.random() * 2 - 1) * shakeIntensity;
+        dy = (Math.random() * 2 - 1) * shakeIntensity;
+        shakeDuration--;
+    }
+    ctx.translate(-Math.round(camera.x) + dx, -Math.round(camera.y) + dy);
+
+    // Draw background parallax layers
+    drawMountains();
+    
+    // Update and draw clouds (scroll slowly across world)
+    clouds.forEach(c => {
+        c.update();
+        c.draw();
+    });
 
     drawTerrain();
     drawTrajectory();
@@ -1579,6 +1964,16 @@ function gameLoop() {
         }
     }
 
+    // Update and draw active explosion particles
+    for (let i = activeParticles.length - 1; i >= 0; i--) {
+        const p = activeParticles[i];
+        if (p.update()) {
+            p.draw();
+        } else {
+            activeParticles.splice(i, 1);
+        }
+    }
+
     ctx.restore();
 
     // Draw center screen flash banner (outside camera transform so it stays fixed on screen)
@@ -1599,31 +1994,39 @@ function gameLoop() {
         ctx.stroke();
         
         ctx.textAlign = 'center';
-        
         const pulse = Math.floor(bannerFeedback.timer / 10) % 2 === 0;
         
-        // Line 1: Distance text
-        ctx.font = '16px "Press Start 2P", cursive';
-        let distText = '';
-        if (bannerFeedback.distance <= 15) { // within 15px is direct hit
-            distText = 'DIRECT HIT!';
-            ctx.fillStyle = pulse ? '#ffcc00' : '#ffffff';
-        } else {
-            distText = `MISSED BY ${bannerFeedback.distance}px`;
+        if (bannerFeedback.shieldOnly) {
+            // Shield Activation Banner
+            ctx.font = '16px "Press Start 2P", cursive';
+            ctx.fillStyle = '#00ffff';
+            ctx.fillText(`${bannerFeedback.tankName} SHIELDED!`, VIEW_WIDTH / 2, bannerY + 45);
+            
+            ctx.font = '10px "Press Start 2P", cursive';
             ctx.fillStyle = '#ffffff';
-        }
-        ctx.fillText(distText, VIEW_WIDTH / 2, bannerY + 35);
-        
-        // Line 2: Hit Damage text
-        ctx.font = '11px "Press Start 2P", cursive';
-        let hitDmgText = `HIT DAMAGE: ${bannerFeedback.damage > 0 ? '-' + bannerFeedback.damage : '0'} HP`;
-        ctx.fillStyle = bannerFeedback.damage > 0 ? '#ef4444' : '#aaaaaa';
-        ctx.fillText(hitDmgText, VIEW_WIDTH / 2, bannerY + 65);
+            ctx.fillText('+50 SHIELD HP ACTIVATED', VIEW_WIDTH / 2, bannerY + 75);
+        } else {
+            // Firing/Damage Banner
+            ctx.font = '16px "Press Start 2P", cursive';
+            let distText = '';
+            if (bannerFeedback.distance <= 15) { // within 15px is direct hit
+                distText = 'DIRECT HIT!';
+                ctx.fillStyle = pulse ? '#ffcc00' : '#ffffff';
+            } else {
+                distText = `MISSED BY ${bannerFeedback.distance}px`;
+                ctx.fillStyle = '#ffffff';
+            }
+            ctx.fillText(distText, VIEW_WIDTH / 2, bannerY + 35);
+            
+            ctx.font = '11px "Press Start 2P", cursive';
+            let hitDmgText = `HIT DAMAGE: ${bannerFeedback.damage > 0 ? '-' + bannerFeedback.damage : '0'} HP`;
+            ctx.fillStyle = bannerFeedback.damage > 0 ? '#ef4444' : '#aaaaaa';
+            ctx.fillText(hitDmgText, VIEW_WIDTH / 2, bannerY + 65);
 
-        // Line 3: Fall Damage text
-        let fallDmgText = `FALL DAMAGE: ${bannerFeedback.fallDamage > 0 ? '-' + bannerFeedback.fallDamage : '0'} HP`;
-        ctx.fillStyle = bannerFeedback.fallDamage > 0 ? '#ef4444' : '#aaaaaa';
-        ctx.fillText(fallDmgText, VIEW_WIDTH / 2, bannerY + 90);
+            let fallDmgText = `FALL DAMAGE: ${bannerFeedback.fallDamage > 0 ? '-' + bannerFeedback.fallDamage : '0'} HP`;
+            ctx.fillStyle = bannerFeedback.fallDamage > 0 ? '#ef4444' : '#aaaaaa';
+            ctx.fillText(fallDmgText, VIEW_WIDTH / 2, bannerY + 90);
+        }
         
         bannerFeedback.timer--;
         if (bannerFeedback.timer <= 0) {
@@ -1955,6 +2358,11 @@ function setupMobileControls() {
             }
         });
     }
+
+    // Play UI click sounds on all buttons
+    document.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', () => sfx.playClick());
+    });
 }
 
 // Start
@@ -1962,6 +2370,9 @@ setupMobileControls();
 
 // Allow clicking or tapping the canvas to navigate the menus
 canvas.addEventListener('click', (e) => {
+    sfx.init();
+    sfx.playClick();
+
     if (currentState === GAME_STATE.MENU) {
         setGameState(GAME_STATE.MODE_SELECT);
         updateHUD();

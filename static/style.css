@@ -15,7 +15,7 @@
 body {
     background-color: var(--bg-color);
     color: var(--text-color);
-    font-family: system-ui, -apple-system, sans-serif;
+    font-family: 'Press Start 2P', cursive, system-ui, -apple-system, sans-serif;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -48,7 +48,7 @@ header h1 {
     justify-content: space-between;
     width: 100%;
     margin-bottom: 10px;
-    font-size: 12px;
+    font-size: 9px;
 }
 
 .player-info {
@@ -63,14 +63,14 @@ header h1 {
 
 .player-info p:first-child {
     font-weight: 800;
-    font-size: 16px;
+    font-size: 11px;
     letter-spacing: 0.5px;
     text-transform: uppercase;
 }
 
 .player-info p:nth-child(2) {
     font-weight: 700;
-    font-size: 13px;
+    font-size: 9px;
 }
 
 #player-hud {
@@ -92,7 +92,7 @@ header h1 {
 }
 
 #turn-indicator {
-    font-size: 18px;
+    font-size: 13px;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 1px;
@@ -114,17 +114,16 @@ header h1 {
 canvas {
     max-width: 100%;
     height: auto;
-    background-color: #87CEEB; /* Sky blue */
     border: 4px solid #fff;
     image-rendering: pixelated; /* Ensures the canvas looks blocky when scaled if needed */
 }
 
 .instructions {
     margin-top: 15px;
-    font-size: 10px;
+    font-size: 8px;
     color: #aaa;
     text-align: center;
-    line-height: 1.5;
+    line-height: 1.6;
 }
 
 .hp-bar-container {
@@ -186,14 +185,19 @@ canvas {
     background: #223344;
     color: #fff;
     border: 2px solid #fff;
-    font-family: system-ui, -apple-system, sans-serif;
-    font-size: 11px;
-    font-weight: bold;
+    font-family: 'Press Start 2P', cursive, sans-serif;
+    font-size: 8px;
     padding: 10px 14px;
     cursor: pointer;
     touch-action: manipulation;
     user-select: none;
     box-shadow: 4px 4px 0px #000;
+    transition: all 0.1s ease;
+}
+
+.btn-control:hover {
+    background: #334455;
+    border-color: var(--primary-color);
 }
 
 .btn-control:active {
@@ -206,14 +210,19 @@ canvas {
     background: #ef4444;
     color: #fff;
     border: 2px solid #fff;
-    font-family: system-ui, -apple-system, sans-serif;
-    font-size: 16px;
-    font-weight: bold;
+    font-family: 'Press Start 2P', cursive, sans-serif;
+    font-size: 12px;
     padding: 16px 30px;
     cursor: pointer;
     touch-action: manipulation;
     user-select: none;
     box-shadow: 5px 5px 0px #000;
+    transition: all 0.1s ease;
+}
+
+.btn-fire:hover {
+    background: #f87171;
+    border-color: var(--primary-color);
 }
 
 .btn-fire:active {
@@ -229,7 +238,7 @@ canvas {
         overflow-y: auto;
     }
     .hud {
-        font-size: 8px;
+        font-size: 7px;
         flex-direction: row;
         gap: 5px;
     }
@@ -238,11 +247,11 @@ canvas {
         padding: 6px;
     }
     .btn-control {
-        font-size: 8px;
+        font-size: 7px;
         padding: 8px 10px;
     }
     .btn-fire {
-        font-size: 12px;
+        font-size: 10px;
         padding: 12px 24px;
     }
 }
@@ -267,17 +276,22 @@ canvas {
     background: #223344;
     color: #fff;
     border: 2px solid #556677;
-    font-family: system-ui, -apple-system, sans-serif;
-    font-size: 10px;
-    font-weight: bold;
-    padding: 6px 12px;
+    font-family: 'Press Start 2P', cursive, sans-serif;
+    font-size: 6.5px;
+    padding: 6px 4px;
     cursor: pointer;
     touch-action: manipulation;
     user-select: none;
     box-shadow: 2px 2px 0px #000;
-    width: 110px;
+    width: 115px;
     text-align: center;
     text-transform: uppercase;
+    transition: all 0.1s ease;
+}
+
+.btn-weapon:hover:not(:disabled) {
+    background: #2d3f52;
+    border-color: #a1a1aa;
 }
 
 .btn-weapon.active {
@@ -290,6 +304,7 @@ canvas {
     box-shadow: 0px 0px 0px #000;
     transform: translate(2px, 2px);
 }
+
 
 /* Hide game UI when on the title screen menu or mode selection */
 .state-menu .hud,
