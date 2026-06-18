@@ -59,7 +59,7 @@ header h1 {
     background: none;
     padding: 10px;
     border: none;
-    width: 200px;
+    width: 160px;
     flex-shrink: 0;
 }
 
@@ -285,7 +285,7 @@ canvas {
     touch-action: manipulation;
     user-select: none;
     box-shadow: 2px 2px 0px #000;
-    width: 115px;
+    width: 95px;
     text-align: center;
     text-transform: uppercase;
     transition: all 0.1s ease;
