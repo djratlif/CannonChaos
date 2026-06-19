@@ -49,7 +49,7 @@ header h1 {
     justify-content: space-between;
     width: 100%;
     margin-bottom: 10px;
-    font-size: 9px;
+    font-size: calc(8.5px * var(--ui-font-scale));
 }
 
 .player-info {
@@ -65,14 +65,14 @@ header h1 {
 
 .player-info p:first-child {
     font-weight: 800;
-    font-size: 11px;
+    font-size: calc(10.5px * var(--ui-font-scale));
     letter-spacing: 0.5px;
     text-transform: uppercase;
 }
 
 .player-info p:nth-child(2) {
     font-weight: 700;
-    font-size: 9px;
+    font-size: calc(8.5px * var(--ui-font-scale));
 }
 
 #player-hud {
@@ -94,7 +94,7 @@ header h1 {
 }
 
 #turn-indicator {
-    font-size: 13px;
+    font-size: calc(12px * var(--ui-font-scale));
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 1px;
@@ -122,7 +122,7 @@ canvas {
 
 .instructions {
     margin-top: 15px;
-    font-size: 8px;
+    font-size: calc(7.5px * var(--ui-font-scale));
     color: #aaa;
     text-align: center;
     line-height: 1.6;
@@ -188,7 +188,7 @@ canvas {
     color: #fff;
     border: 2px solid #fff;
     font-family: 'Press Start 2P', cursive, sans-serif;
-    font-size: 8px;
+    font-size: calc(8px * var(--ui-font-scale));
     padding: 10px 14px;
     cursor: pointer;
     touch-action: manipulation;
@@ -213,7 +213,7 @@ canvas {
     color: #fff;
     border: 2px solid #fff;
     font-family: 'Press Start 2P', cursive, sans-serif;
-    font-size: 12px;
+    font-size: calc(11px * var(--ui-font-scale));
     padding: 16px 30px;
     cursor: pointer;
     touch-action: manipulation;
@@ -279,7 +279,7 @@ canvas {
     color: #fff;
     border: 2px solid #556677;
     font-family: 'Press Start 2P', cursive, sans-serif;
-    font-size: 6.5px;
+    font-size: calc(7px * var(--ui-font-scale));
     padding: 6px 4px;
     cursor: pointer;
     touch-action: manipulation;
@@ -498,10 +498,85 @@ body.theme-amiga {
     --win95-hud-bg: #aaaaaa;
 }
 
+/* Typography variables and default scales */
+:root {
+    --ui-font: 'Press Start 2P', monospace, sans-serif;
+    --ui-font-scale: 1.0;
+    --ui-font-weight: normal;
+}
+
+body.font-pixel-classic {
+    --ui-font: 'Press Start 2P', monospace, sans-serif;
+    --ui-font-scale: 0.95;
+    --ui-font-weight: normal;
+}
+
+body.font-desktop-classic {
+    --ui-font: Tahoma, Geneva, Kalimati, sans-serif;
+    --ui-font-scale: 1.45;
+    --ui-font-weight: bold;
+}
+
+body.font-terminal-mono {
+    --ui-font: 'Courier New', Courier, monospace;
+    --ui-font-scale: 1.45;
+    --ui-font-weight: bold;
+}
+
+body.font-pixel-readable {
+    --ui-font: 'Pixelify Sans', 'Press Start 2P', sans-serif;
+    --ui-font-scale: 1.4;
+    --ui-font-weight: bold;
+}
+
+body.font-crt-mono {
+    --ui-font: 'VT323', monospace;
+    --ui-font-scale: 1.85;
+    --ui-font-weight: normal;
+}
+
+body.font-micro-pixel {
+    --ui-font: 'Silkscreen', monospace;
+    --ui-font-scale: 1.15;
+    --ui-font-weight: bold;
+}
+
+body.font-sleek-sans {
+    --ui-font: 'Inter', system-ui, -apple-system, sans-serif;
+    --ui-font-scale: 1.35;
+    --ui-font-weight: 600;
+}
+
+body.font-dev-console {
+    --ui-font: 'JetBrains Mono', monospace;
+    --ui-font-scale: 1.35;
+    --ui-font-weight: bold;
+}
+
+body.font-future-tech {
+    --ui-font: 'Share Tech Mono', monospace;
+    --ui-font-scale: 1.45;
+    --ui-font-weight: normal;
+}
+
+/* Ensure game title and build version always remain locked in pixel font */
+header h1,
+header h1 *,
+.game-container h1,
+header p:not(#turn-indicator) {
+    font-family: 'Press Start 2P', cursive !important;
+    font-weight: normal !important;
+    font-size: 17px !important;
+}
+header p:not(#turn-indicator) {
+    font-size: 8px !important;
+}
+
 /* Base Body Override when theme is active */
 body[class*="theme-"] {
     background-color: var(--win95-bg);
-    font-family: 'Press Start 2P', monospace, sans-serif;
+    font-family: var(--ui-font, 'Press Start 2P', monospace, sans-serif);
+    font-weight: var(--ui-font-weight, normal);
     color: var(--win95-text);
     padding: 10px;
     box-sizing: border-box;
@@ -523,18 +598,16 @@ body[class*="theme-"] .game-container {
 
 /* Classic Windows 95 Title Bar */
 .win95-title-bar {
-    display: none; /* hidden by default */
-}
-body[class*="theme-"] .win95-title-bar {
-    display: flex;
+    display: none !important;
     align-items: center;
     justify-content: space-between;
-    background: linear-gradient(90deg, var(--win95-title-bg), var(--win95-accent));
-    color: var(--win95-title-text);
+    background: linear-gradient(90deg, var(--win95-title-bg, #000080), var(--win95-accent, #63b3ed));
+    color: var(--win95-title-text, #ffffff);
     padding: 3px 6px;
     width: 100%;
     margin-bottom: 4px;
     user-select: none;
+    box-sizing: border-box;
 }
 .win95-title-bar-text {
     font-size: 10px;
@@ -577,18 +650,16 @@ body[class*="theme-"] .win95-title-bar {
 
 /* Classic Menu Bar */
 .win95-menu-bar {
-    display: none;
-}
-body[class*="theme-"] .win95-menu-bar {
-    display: flex;
+    display: none !important;
     align-items: center;
     width: 100%;
-    border-bottom: 2px solid var(--win95-dark);
-    padding: 4px 6px;
+    border-bottom: 2px solid var(--win95-dark, #808080);
+    padding: 6px 8px;
     margin-bottom: 12px;
-    font-size: 9px;
-    gap: 12px;
-    background-color: var(--win95-face);
+    font-size: calc(9.5px * var(--ui-font-scale, 1));
+    gap: 16px;
+    background-color: var(--win95-face, #c0c0c0);
+    box-sizing: border-box;
 }
 .win95-menu-item {
     cursor: pointer;
@@ -622,7 +693,7 @@ body[class*="theme-"] .win95-groupbox {
     color: var(--win95-text);
 }
 body[class*="theme-"] .win95-groupbox legend {
-    font-size: 8px;
+    font-size: calc(8px * var(--ui-font-scale));
     font-weight: bold;
     padding: 0 6px;
     color: var(--win95-text);
@@ -716,7 +787,7 @@ body[class*="theme-"] #cpu-shield-bar {
     border-right-color: var(--win95-light);
     border-bottom-color: var(--win95-light);
     padding: 4px 8px;
-    font-size: 8px;
+    font-size: calc(8px * var(--ui-font-scale));
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -736,7 +807,7 @@ body[class*="theme-"] canvas {
 /* Turn indicator blinking & styling */
 body[class*="theme-"] #turn-indicator {
     color: var(--win95-text);
-    font-size: 10px;
+    font-size: calc(9.5px * var(--ui-font-scale));
     font-weight: bold;
     background-color: var(--win95-input-bg);
     border: 1.5px solid;

@@ -2583,7 +2583,7 @@ function applyTheme(theme) {
 
 const themeSelect = document.getElementById('win95-theme-select');
 if (themeSelect) {
-    const savedTheme = localStorage.getItem('win95-theme') || 'classic';
+    const savedTheme = localStorage.getItem('win95-theme') || 'dark';
     themeSelect.value = savedTheme;
     applyTheme(savedTheme);
 
@@ -2591,6 +2591,26 @@ if (themeSelect) {
         const selected = e.target.value;
         localStorage.setItem('win95-theme', selected);
         applyTheme(selected);
+    });
+}
+
+// Windows 95 Font Switcher Logic
+function applyFont(font) {
+    const classes = Array.from(document.body.classList).filter(c => c.startsWith('font-'));
+    classes.forEach(c => document.body.classList.remove(c));
+    document.body.classList.add(`font-${font}`);
+}
+
+const fontSelect = document.getElementById('win95-font-select');
+if (fontSelect) {
+    const savedFont = localStorage.getItem('win95-font') || 'sleek-sans';
+    fontSelect.value = savedFont;
+    applyFont(savedFont);
+
+    fontSelect.addEventListener('change', (e) => {
+        const selected = e.target.value;
+        localStorage.setItem('win95-font', selected);
+        applyFont(selected);
     });
 }
 
