@@ -1542,14 +1542,48 @@ function updateHUD() {
     }
     
     let turnIndicator = document.getElementById('turn-indicator');
-    if (currentState === GAME_STATE.GAMEOVER) {
-        turnIndicator.innerText = player.hp > 0 ? "PLAYER 1 WINS!" : "CPU WINS!";
-        turnIndicator.style.animation = "none";
-        turnIndicator.style.color = player.hp > 0 ? "var(--player-color)" : "var(--cpu-color)";
+    const leftArrow = document.getElementById('turn-arrow-left');
+    const rightArrow = document.getElementById('turn-arrow-right');
+    const isProjectileActive = activeProjectiles.some(p => p.active);
+
+    // Update SVG turn arrows in the header
+    if (currentState !== GAME_STATE.PLAYING) {
+        if (leftArrow) leftArrow.style.visibility = 'hidden';
+        if (rightArrow) rightArrow.style.visibility = 'hidden';
     } else {
-        turnIndicator.innerText = turn === 0 ? "Player's Turn" : "CPU's Turn";
-        turnIndicator.style.color = turn === 0 ? "var(--player-color)" : "var(--cpu-color)";
-        turnIndicator.style.animation = "blink 1.5s infinite";
+        if (turn === 0) {
+            if (leftArrow) {
+                leftArrow.style.visibility = 'visible';
+                leftArrow.style.animation = isProjectileActive ? 'none' : 'blink 1.2s infinite';
+            }
+            if (rightArrow) rightArrow.style.visibility = 'hidden';
+        } else {
+            if (leftArrow) leftArrow.style.visibility = 'hidden';
+            if (rightArrow) {
+                rightArrow.style.visibility = 'visible';
+                rightArrow.style.animation = isProjectileActive ? 'none' : 'blink 1.2s infinite';
+            }
+        }
+    }
+
+    if (currentState === GAME_STATE.GAMEOVER) {
+        if (turnIndicator) {
+            turnIndicator.innerHTML = player.hp > 0 ? "PLAYER 1<br>WINS!" : "CPU<br>WINS!";
+            turnIndicator.style.animation = "none";
+            turnIndicator.style.color = player.hp > 0 ? "var(--player-color)" : "var(--cpu-color)";
+        }
+    } else {
+        if (turnIndicator) {
+            if (isProjectileActive) {
+                turnIndicator.innerHTML = "FIRING...";
+                turnIndicator.style.color = "var(--primary-color)";
+                turnIndicator.style.animation = "none";
+            } else {
+                turnIndicator.innerHTML = turn === 0 ? "READY" : "WAITING";
+                turnIndicator.style.color = turn === 0 ? "var(--player-color)" : "var(--cpu-color)";
+                turnIndicator.style.animation = "blink 1.5s infinite";
+            }
+        }
     }
 
     if (turn === 0) {

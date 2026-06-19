@@ -11,51 +11,94 @@
 </head>
 <body class="theme-win95-dark">
     <div class="game-container">
-        <!-- Original Header Title & Build Info -->
-        <header style="text-align: center; margin-bottom: 20px; padding-top: 15px; width: 100%;">
-            <h1 style="margin-bottom: 5px; font-family: 'Press Start 2P', cursive; color: #D4922A; text-transform: uppercase; text-shadow: 2px 2px 0px #000;">Cannon Chaos</h1>
-            <p style="font-size: 10px; color: #ffffff; font-family: 'Press Start 2P', cursive; opacity: 0.9;">(Build {{ build_version }})</p>
+        <!-- Header containing Player HUD, Centered Title, and CPU HUD -->
+        <header style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 15px 10px 0 10px; width: 100%; box-sizing: border-box; gap: 15px;">
+            <!-- Player 1 HUD -->
+            <fieldset class="player-info win95-groupbox" id="player-hud" style="width: 280px; flex: 0 0 280px; margin: 0;">
+                <legend>Player 1 (Human)</legend>
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+                    <div style="flex: 1;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                            <span style="font-size: 8px;">HP:</span>
+                            <span id="player-hp" class="win95-inset-well">100</span>
+                        </div>
+                        <div class="hp-bar-container"><div class="hp-bar" id="player-hp-bar"></div></div>
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                            <span style="font-size: 8px;">Shield:</span>
+                            <span style="font-size: 8px;"><span id="player-shield">0</span>/50</span>
+                        </div>
+                        <div class="hp-bar-container"><div class="hp-bar" id="player-shield-bar" style="width: 0%;"></div></div>
+                    </div>
+                </div>
+            </fieldset>
+
+            <!-- Centered Title & Build Info (with turn indicator arrows) -->
+            <div style="text-align: center; flex: 1; display: flex; flex-direction: row; justify-content: center; align-items: center; gap: 15px; margin: 0 10px;">
+                <!-- Left Arrow (points to Player 1 on their turn) -->
+                <svg id="turn-arrow-left" width="32" height="32" viewBox="0 0 24 24" style="visibility: hidden; flex-shrink: 0;">
+                    <polygon points="18,3 6,12 18,21" fill="#3b82f6" stroke="#3b82f6" stroke-width="3.5" stroke-linejoin="round" />
+                </svg>
+
+                <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 170px;">
+                    <h1 style="margin: 0 0 4px 0; font-family: 'Press Start 2P', cursive; color: #D4922A; text-transform: uppercase; text-shadow: 2px 2px 0px #000; font-size: 17px; line-height: 1.2; white-space: nowrap;">Cannon Chaos</h1>
+                    <p style="font-size: 8px; color: #ffffff; font-family: 'Press Start 2P', cursive; opacity: 0.9; margin: 0;">(Build {{ build_version }})</p>
+                </div>
+
+                <!-- Right Arrow (points to CPU on their turn) -->
+                <svg id="turn-arrow-right" width="32" height="32" viewBox="0 0 24 24" style="visibility: hidden; flex-shrink: 0;">
+                    <polygon points="6,3 18,12 6,21" fill="#ef4444" stroke="#ef4444" stroke-width="3.5" stroke-linejoin="round" />
+                </svg>
+            </div>
+
+            <!-- CPU HUD -->
+            <fieldset class="player-info win95-groupbox" id="cpu-hud" style="width: 280px; flex: 0 0 280px; margin: 0; text-align: left;">
+                <legend>CPU Opponent</legend>
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+                    <div style="flex: 1;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                            <span style="font-size: 8px;">HP:</span>
+                            <span id="cpu-hp" class="win95-inset-well">100</span>
+                        </div>
+                        <div class="hp-bar-container"><div class="hp-bar" id="cpu-hp-bar"></div></div>
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                            <span style="font-size: 8px;">Shield:</span>
+                            <span style="font-size: 8px;"><span id="cpu-shield">0</span>/50</span>
+                        </div>
+                        <div class="hp-bar-container"><div class="hp-bar" id="cpu-shield-bar" style="width: 0%;"></div></div>
+                    </div>
+                </div>
+            </fieldset>
         </header>
 
         <!-- Client Area -->
         <div class="win95-client">
-            <div class="hud">
-                <fieldset class="player-info win95-groupbox" id="player-hud">
-                    <legend>Player 1 (Human)</legend>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span>HP:</span>
-                        <span id="player-hp" class="win95-inset-well">100</span>
-                    </div>
-                    <div class="hp-bar-container"><div class="hp-bar" id="player-hp-bar"></div></div>
-                    
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
-                        <span>Shield:</span>
-                        <span><span id="player-shield">0</span>/50</span>
-                    </div>
-                    <div class="hp-bar-container"><div class="hp-bar" id="player-shield-bar" style="width: 0%;"></div></div>
-                </fieldset>
-                
-                <div class="game-info" style="display: flex; flex-direction: row; align-items: stretch; gap: 12px;">
-                    <fieldset class="win95-groupbox game-status-controls" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-width: 170px;">
+            <div class="hud" style="width: 100%; margin-bottom: 10px;">
+                <!-- Status & Weapon Selector Row -->
+                <div style="display: flex; flex-direction: row; align-items: stretch; gap: 12px; width: 100%;">
+                    <fieldset class="win95-groupbox game-status-controls" style="width: 320px; flex: 0 0 320px; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 16px; margin: 0; padding: 12px; box-sizing: border-box;">
                         <legend>Status</legend>
-                        <p id="turn-indicator">Player's Turn</p>
-                        <div class="controls-info" style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
-                            <div class="control-item" style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                        <p id="turn-indicator" style="margin: 0; font-size: 8px; text-align: center; line-height: 1.3;">Player's<br>Turn</p>
+                        <div class="controls-info" style="display: flex; flex-direction: row; gap: 12px; align-items: center;">
+                            <div class="control-item" style="display: flex; align-items: center; gap: 6px;">
                                 <span style="font-size: 8px;">Angle:</span>
                                 <span id="angle-display" class="win95-inset-well">45</span>
                             </div>
-                            <div class="control-item" style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                            <div class="control-item" style="display: flex; align-items: center; gap: 6px;">
                                 <span style="font-size: 8px;">Power:</span>
                                 <span id="power-display" class="win95-inset-well">0</span>
                             </div>
                         </div>
                     </fieldset>
 
-                    <fieldset class="win95-groupbox weapon-selector" style="display: flex; flex-direction: row; gap: 12px; align-items: flex-start; margin: 4px 0;">
+                    <fieldset class="win95-groupbox weapon-selector" style="flex: 1 1 auto; display: flex; flex-direction: row; gap: 16px; align-items: center; justify-content: space-between; margin: 0; padding: 12px; box-sizing: border-box;">
                         <legend>Armory / Defenses</legend>
-                        <div class="weapon-section" style="display: flex; flex-direction: column; align-items: center;">
-                            <p style="font-size: 8px; color: var(--win95-text); margin-bottom: 6px; text-transform: uppercase; font-weight: bold;">Cannons</p>
-                            <div class="weapon-grid">
+                        <div class="weapon-section" style="display: flex; flex-direction: row; align-items: center; gap: 8px;">
+                            <p style="font-size: 8px; color: var(--win95-text); text-transform: uppercase; font-weight: bold; margin: 0; white-space: nowrap;">Cannons:</p>
+                            <div class="weapon-grid" style="display: flex; flex-direction: row; gap: 4px; flex-wrap: wrap;">
                                 <button id="weapon-standard" class="btn-weapon active">Standard (∞)</button>
                                 <button id="weapon-medium" class="btn-weapon">Medium (2)</button>
                                 <button id="weapon-double" class="btn-weapon">Double (3)</button>
@@ -64,29 +107,14 @@
                                 <button id="weapon-crazydave" class="btn-weapon">Crazy Dave (2)</button>
                             </div>
                         </div>
-                        <div class="weapon-section" style="display: flex; flex-direction: column; align-items: center; border-left: 2px solid var(--win95-dark); padding-left: 12px;">
-                            <p style="font-size: 8px; color: var(--win95-text); margin-bottom: 6px; text-transform: uppercase; font-weight: bold;">Shields</p>
-                            <div class="weapon-grid">
+                        <div class="weapon-section" style="display: flex; flex-direction: row; align-items: center; gap: 8px; border-left: 2px solid var(--win95-dark); padding-left: 12px;">
+                            <p style="font-size: 8px; color: var(--win95-text); text-transform: uppercase; font-weight: bold; margin: 0; white-space: nowrap;">Shields:</p>
+                            <div class="weapon-grid" style="display: flex; flex-direction: row; gap: 4px;">
                                 <button id="weapon-bubble" class="btn-weapon">Bubble (1)</button>
                             </div>
                         </div>
                     </fieldset>
                 </div>
-
-                <fieldset class="player-info win95-groupbox" id="cpu-hud" style="text-align: left;">
-                    <legend>CPU Opponent</legend>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span>HP:</span>
-                        <span id="cpu-hp" class="win95-inset-well">100</span>
-                    </div>
-                    <div class="hp-bar-container"><div class="hp-bar" id="cpu-hp-bar"></div></div>
-                    
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
-                        <span>Shield:</span>
-                        <span><span id="cpu-shield">0</span>/50</span>
-                    </div>
-                    <div class="hp-bar-container"><div class="hp-bar" id="cpu-shield-bar" style="width: 0%;"></div></div>
-                </fieldset>
             </div>
 
             <canvas id="gameCanvas" width="1000" height="600"></canvas>
