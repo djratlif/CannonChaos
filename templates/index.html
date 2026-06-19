@@ -9,96 +9,109 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 </head>
-<body>
+<body class="theme-win95-dark">
     <div class="game-container">
-        <header style="text-align: center; margin-bottom: 20px;">
-            <h1 style="margin-bottom: 5px;">Cannon Chaos</h1>
-            <p style="font-size: 10px; color: #aaa; font-family: 'Press Start 2P', cursive;">(Build {{ build_version }})</p>
+        <!-- Original Header Title & Build Info -->
+        <header style="text-align: center; margin-bottom: 20px; padding-top: 15px; width: 100%;">
+            <h1 style="margin-bottom: 5px; font-family: 'Press Start 2P', cursive; color: #D4922A; text-transform: uppercase; text-shadow: 2px 2px 0px #000;">Cannon Chaos</h1>
+            <p style="font-size: 10px; color: #ffffff; font-family: 'Press Start 2P', cursive; opacity: 0.9;">(Build {{ build_version }})</p>
         </header>
 
-        <div class="hud">
-            <div class="player-info" id="player-hud">
-                <p>Player 1</p>
-                <p>HP: <span id="player-hp">100</span></p>
-                <div class="hp-bar-container"><div class="hp-bar" id="player-hp-bar"></div></div>
-                <p style="font-size: 11px; margin-top: 4px;">Shield: <span id="player-shield">0</span>/50</p>
-                <div class="hp-bar-container" style="border-color: #00ffff;"><div class="hp-bar" id="player-shield-bar" style="background-color: #00ffff; width: 0%;"></div></div>
+        <!-- Client Area -->
+        <div class="win95-client">
+            <div class="hud">
+                <fieldset class="player-info win95-groupbox" id="player-hud">
+                    <legend>Player 1 (Human)</legend>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>HP:</span>
+                        <span id="player-hp" class="win95-inset-well">100</span>
+                    </div>
+                    <div class="hp-bar-container"><div class="hp-bar" id="player-hp-bar"></div></div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                        <span>Shield:</span>
+                        <span><span id="player-shield">0</span>/50</span>
+                    </div>
+                    <div class="hp-bar-container"><div class="hp-bar" id="player-shield-bar" style="width: 0%;"></div></div>
+                </fieldset>
+                
+                <div class="game-info" style="display: flex; flex-direction: row; align-items: stretch; gap: 12px;">
+                    <fieldset class="win95-groupbox game-status-controls" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-width: 170px;">
+                        <legend>Status</legend>
+                        <p id="turn-indicator">Player's Turn</p>
+                        <div class="controls-info" style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
+                            <div class="control-item" style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                                <span style="font-size: 8px;">Angle:</span>
+                                <span id="angle-display" class="win95-inset-well">45</span>
+                            </div>
+                            <div class="control-item" style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                                <span style="font-size: 8px;">Power:</span>
+                                <span id="power-display" class="win95-inset-well">0</span>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="win95-groupbox weapon-selector" style="display: flex; flex-direction: row; gap: 12px; align-items: flex-start; margin: 4px 0;">
+                        <legend>Armory / Defenses</legend>
+                        <div class="weapon-section" style="display: flex; flex-direction: column; align-items: center;">
+                            <p style="font-size: 8px; color: var(--win95-text); margin-bottom: 6px; text-transform: uppercase; font-weight: bold;">Cannons</p>
+                            <div class="weapon-grid">
+                                <button id="weapon-standard" class="btn-weapon active">Standard (∞)</button>
+                                <button id="weapon-medium" class="btn-weapon">Medium (2)</button>
+                                <button id="weapon-double" class="btn-weapon">Double (3)</button>
+                                <button id="weapon-ricochet" class="btn-weapon">Ricochet (3)</button>
+                                <button id="weapon-nuke" class="btn-weapon">Nuke (1)</button>
+                                <button id="weapon-crazydave" class="btn-weapon">Crazy Dave (2)</button>
+                            </div>
+                        </div>
+                        <div class="weapon-section" style="display: flex; flex-direction: column; align-items: center; border-left: 2px solid var(--win95-dark); padding-left: 12px;">
+                            <p style="font-size: 8px; color: var(--win95-text); margin-bottom: 6px; text-transform: uppercase; font-weight: bold;">Shields</p>
+                            <div class="weapon-grid">
+                                <button id="weapon-bubble" class="btn-weapon">Bubble (1)</button>
+                            </div>
+                        </div>
+                    </fieldset>
+                </div>
+
+                <fieldset class="player-info win95-groupbox" id="cpu-hud" style="text-align: left;">
+                    <legend>CPU Opponent</legend>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>HP:</span>
+                        <span id="cpu-hp" class="win95-inset-well">100</span>
+                    </div>
+                    <div class="hp-bar-container"><div class="hp-bar" id="cpu-hp-bar"></div></div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                        <span>Shield:</span>
+                        <span><span id="cpu-shield">0</span>/50</span>
+                    </div>
+                    <div class="hp-bar-container"><div class="hp-bar" id="cpu-shield-bar" style="width: 0%;"></div></div>
+                </fieldset>
             </div>
+
+            <canvas id="gameCanvas" width="1000" height="600"></canvas>
             
-            <div class="game-info" style="display: flex; flex-direction: row; align-items: center; gap: 12px;">
-                <div class="game-status-controls" style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-                    <p id="turn-indicator">Player's Turn</p>
-                    <div class="controls-info" style="display: flex; flex-direction: column; gap: 8px; color: #00ffcc;">
-                        <div class="control-item" style="display: flex; align-items: center; gap: 8px;">
-                            <svg id="angle-svg" width="24" height="24" viewBox="0 0 24 24" style="vertical-align: middle;">
-                                <path d="M 3 18 A 9 9 0 0 1 21 18" fill="none" stroke="#666" stroke-width="2" />
-                                <line id="angle-needle" x1="12" y1="18" x2="18.36" y2="11.64" stroke="var(--primary-color)" stroke-width="2.5" stroke-linecap="round" />
-                            </svg>
-                            <p>Angle: <span id="angle-display">45</span>&deg;</p>
-                        </div>
-                        <div class="control-item" style="display: flex; align-items: center; gap: 8px;">
-                            <svg id="power-svg" width="16" height="24" viewBox="0 0 16 24" style="vertical-align: middle;">
-                                <!-- Thermometer outline -->
-                                <rect x="5" y="2" width="6" height="20" rx="3" fill="#334455" stroke="#666" stroke-width="1" />
-                                <!-- Dynamic fill -->
-                                <rect id="power-fill" x="5" y="22" width="6" height="0" rx="3" fill="#4ade80" />
-                            </svg>
-                            <p>Power: <span id="power-display">0</span>%</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="weapon-selector" style="display: flex; flex-direction: row; gap: 12px; align-items: flex-start;">
-                    <div class="weapon-section" style="display: flex; flex-direction: column; align-items: center;">
-                        <p style="font-size: 10px; color: #aaa; margin-bottom: 4px; text-transform: uppercase;">Cannon</p>
-                        <div class="weapon-grid">
-                            <button id="weapon-standard" class="btn-weapon active">Standard (∞)</button>
-                            <button id="weapon-medium" class="btn-weapon">Medium (2)</button>
-                            <button id="weapon-double" class="btn-weapon">Double (3)</button>
-                            <button id="weapon-ricochet" class="btn-weapon">Ricochet (3)</button>
-                            <button id="weapon-nuke" class="btn-weapon">Nuke (1)</button>
-                            <button id="weapon-crazydave" class="btn-weapon">Crazy Dave (2)</button>
-                        </div>
-                    </div>
-                    <div class="weapon-section" style="display: flex; flex-direction: column; align-items: center; border-left: 2px solid #334455; padding-left: 12px;">
-                        <p style="font-size: 10px; color: #aaa; margin-bottom: 4px; text-transform: uppercase;">Shield</p>
-                        <div class="weapon-grid">
-                            <button id="weapon-bubble" class="btn-weapon">Bubble (1)</button>
-                        </div>
-                    </div>
-                </div>
+            <div class="instructions">
+                <p>Controls:</p>
+                <p>Desktop: [LEFT] / [RIGHT] Arrows to change Angle, [UP] / [DOWN] for Power. Press [SPACE] to Fire!</p>
+                <p>Mobile: Use on-screen controls below.</p>
             </div>
 
-            <div class="player-info" id="cpu-hud">
-                <p>CPU</p>
-                <p>HP: <span id="cpu-hp">100</span></p>
-                <div class="hp-bar-container"><div class="hp-bar" id="cpu-hp-bar"></div></div>
-                <p style="font-size: 11px; margin-top: 4px;">Shield: <span id="cpu-shield">0</span>/50</p>
-                <div class="hp-bar-container" style="border-color: #00ffff;"><div class="hp-bar" id="cpu-shield-bar" style="background-color: #00ffff; width: 0%;"></div></div>
+            <div class="mobile-controls">
+                <div class="dpad">
+                    <div class="dpad-row">
+                        <button id="btn-power-up" class="btn-control">▲ Power</button>
+                    </div>
+                    <div class="dpad-row-mid">
+                        <button id="btn-angle-left" class="btn-control">◀ Angle</button>
+                        <button id="btn-angle-right" class="btn-control">Angle ▶</button>
+                    </div>
+                    <div class="dpad-row">
+                        <button id="btn-power-down" class="btn-control">▼ Power</button>
+                    </div>
+                </div>
+                <button id="btn-fire" class="btn-fire">FIRE</button>
             </div>
-        </div>
-
-        <canvas id="gameCanvas" width="1000" height="600"></canvas>
-        
-        <div class="instructions">
-            <p>Controls:</p>
-            <p>Desktop: [LEFT] / [RIGHT] Arrows to change Angle, [UP] / [DOWN] for Power. Press [SPACE] to Fire!</p>
-            <p>Mobile: Use on-screen controls below.</p>
-        </div>
-
-        <div class="mobile-controls">
-            <div class="dpad">
-                <div class="dpad-row">
-                    <button id="btn-power-up" class="btn-control">▲ Power</button>
-                </div>
-                <div class="dpad-row-mid">
-                    <button id="btn-angle-left" class="btn-control">◀ Angle</button>
-                    <button id="btn-angle-right" class="btn-control">Angle ▶</button>
-                </div>
-                <div class="dpad-row">
-                    <button id="btn-power-down" class="btn-control">▼ Power</button>
-                </div>
-            </div>
-            <button id="btn-fire" class="btn-fire">FIRE</button>
         </div>
     </div>
 

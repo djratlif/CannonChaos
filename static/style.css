@@ -322,3 +322,429 @@ canvas {
     opacity: 0;
     pointer-events: none;
 }
+
+/* ==========================================
+   WINDOWS 95 & RETRO THEMES SYSTEM (9 VARIETIES)
+   ========================================== */
+
+/* Theme 1: Windows 95 Classic (Battleship Grey & Teal Desktop) */
+body.theme-win95-classic {
+    --win95-bg: #3a6ea5;
+    --win95-face: #c0c0c0;
+    --win95-text: #000000;
+    --win95-light: #ffffff;
+    --win95-dark: #808080;
+    --win95-shadow: #000000;
+    --win95-title-bg: #000080;
+    --win95-title-text: #ffffff;
+    --win95-accent: #000080;
+    --win95-input-bg: #ffffff;
+    --win95-input-text: #000000;
+    --win95-progress-player: #000080;
+    --win95-progress-cpu: #800000;
+    --win95-progress-shield: #008080;
+    --win95-hud-bg: #c0c0c0;
+}
+
+/* Theme 2: Win95 Dark Mode (A modern dark retro twist) */
+body.theme-win95-dark {
+    --win95-bg: #1a1e24;
+    --win95-face: #2d3139;
+    --win95-text: #e2e8f0;
+    --win95-light: #4a5568;
+    --win95-dark: #1a202c;
+    --win95-shadow: #0a0e17;
+    --win95-title-bg: #3182ce;
+    --win95-title-text: #ffffff;
+    --win95-accent: #63b3ed;
+    --win95-input-bg: #1a202c;
+    --win95-input-text: #e2e8f0;
+    --win95-progress-player: #3182ce;
+    --win95-progress-cpu: #e53e3e;
+    --win95-progress-shield: #319795;
+    --win95-hud-bg: #2d3139;
+}
+
+/* Theme 3: Vaporwave 95 (Pastel Pink / Neon Cyan / Vapor vibes) */
+body.theme-win95-vapor {
+    --win95-bg: #ff71ce;
+    --win95-face: #01cdfe;
+    --win95-text: #050505;
+    --win95-light: #ffffff;
+    --win95-dark: #0099bd;
+    --win95-shadow: #053b47;
+    --win95-title-bg: #b967ff;
+    --win95-title-text: #fffb96;
+    --win95-accent: #fffb96;
+    --win95-input-bg: #ffffff;
+    --win95-input-text: #01cdfe;
+    --win95-progress-player: #b967ff;
+    --win95-progress-cpu: #ff71ce;
+    --win95-progress-shield: #05cbd6;
+    --win95-hud-bg: #01cdfe;
+}
+
+/* Theme 4: 8-Bit Retro Arcade (High contrast neon scanline theme) */
+body.theme-arcade-neon {
+    --win95-bg: #08080f;
+    --win95-face: #14151f;
+    --win95-text: #39ff14;
+    --win95-light: #39ff14;
+    --win95-dark: #084c0c;
+    --win95-shadow: #000000;
+    --win95-title-bg: #ff007f;
+    --win95-title-text: #ffffff;
+    --win95-accent: #ff007f;
+    --win95-input-bg: #020205;
+    --win95-input-text: #39ff14;
+    --win95-progress-player: #39ff14;
+    --win95-progress-cpu: #ff007f;
+    --win95-progress-shield: #00ffff;
+    --win95-hud-bg: #14151f;
+}
+
+/* Theme 5: MS-DOS Terminal (Monochrome console look) */
+body.theme-msdos {
+    --win95-bg: #000000;
+    --win95-face: #050505;
+    --win95-text: #00ff00;
+    --win95-light: #00ff00;
+    --win95-dark: #007700;
+    --win95-shadow: #000000;
+    --win95-title-bg: #007700;
+    --win95-title-text: #000000;
+    --win95-accent: #00ff00;
+    --win95-input-bg: #000000;
+    --win95-input-text: #00ff00;
+    --win95-progress-player: #00ff00;
+    --win95-progress-cpu: #007700;
+    --win95-progress-shield: #00aa00;
+    --win95-hud-bg: #050505;
+}
+
+/* Theme 6: Game Boy DMG (Classic retro handheld green theme) */
+body.theme-gameboy {
+    --win95-bg: #8bac0f;
+    --win95-face: #9bbc0f;
+    --win95-text: #0f380f;
+    --win95-light: #8bac0f;
+    --win95-dark: #306230;
+    --win95-shadow: #0f380f;
+    --win95-title-bg: #306230;
+    --win95-title-text: #9bbc0f;
+    --win95-accent: #8bac0f;
+    --win95-input-bg: #8bac0f;
+    --win95-input-text: #0f380f;
+    --win95-progress-player: #0f380f;
+    --win95-progress-cpu: #306230;
+    --win95-progress-shield: #306230;
+    --win95-hud-bg: #9bbc0f;
+}
+
+/* Theme 7: NES Classic (Nintendo Console-inspired Red and Grey) */
+body.theme-nes {
+    --win95-bg: #e4000f;
+    --win95-face: #d8d8d8;
+    --win95-text: #202020;
+    --win95-light: #ffffff;
+    --win95-dark: #8a8a8a;
+    --win95-shadow: #000000;
+    --win95-title-bg: #202020;
+    --win95-title-text: #e4000f;
+    --win95-accent: #e4000f;
+    --win95-input-bg: #ffffff;
+    --win95-input-text: #202020;
+    --win95-progress-player: #e4000f;
+    --win95-progress-cpu: #202020;
+    --win95-progress-shield: #e5b22d;
+    --win95-hud-bg: #d8d8d8;
+}
+
+/* Theme 8: Cyberpunk Neon (Futuristic high tech low-life aesthetic) */
+body.theme-cyberpunk {
+    --win95-bg: #0c0817;
+    --win95-face: #fcee0a;
+    --win95-text: #050505;
+    --win95-light: #ffffff;
+    --win95-dark: #b3a700;
+    --win95-shadow: #0c0817;
+    --win95-title-bg: #ff0055;
+    --win95-title-text: #ffffff;
+    --win95-accent: #00f0ff;
+    --win95-input-bg: #0c0817;
+    --win95-input-text: #00f0ff;
+    --win95-progress-player: #ff0055;
+    --win95-progress-cpu: #0c0817;
+    --win95-progress-shield: #00f0ff;
+    --win95-hud-bg: #fcee0a;
+}
+
+/* Theme 9: Amiga Workbench (Classic Workbench blue, grey and orange) */
+body.theme-amiga {
+    --win95-bg: #0055aa;
+    --win95-face: #aaaaaa;
+    --win95-text: #000000;
+    --win95-light: #ffffff;
+    --win95-dark: #555555;
+    --win95-shadow: #000000;
+    --win95-title-bg: #ff5500;
+    --win95-title-text: #ffffff;
+    --win95-accent: #ff5500;
+    --win95-input-bg: #ffffff;
+    --win95-input-text: #000000;
+    --win95-progress-player: #0055aa;
+    --win95-progress-cpu: #ff5500;
+    --win95-progress-shield: #00a8a8;
+    --win95-hud-bg: #aaaaaa;
+}
+
+/* Base Body Override when theme is active */
+body[class*="theme-"] {
+    background-color: var(--win95-bg);
+    font-family: 'Press Start 2P', monospace, sans-serif;
+    color: var(--win95-text);
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+/* Main Window Layout */
+body[class*="theme-"] .game-container {
+    background-color: var(--win95-face);
+    color: var(--win95-text);
+    border: none;
+    border-top: 3px solid var(--win95-light);
+    border-left: 3px solid var(--win95-light);
+    border-right: 3px solid var(--win95-shadow);
+    border-bottom: 3px solid var(--win95-shadow);
+    box-shadow: inset 1px 1px 0px var(--win95-light), inset -1px -1px 0px var(--win95-dark);
+    padding: 4px;
+    gap: 0;
+}
+
+/* Classic Windows 95 Title Bar */
+.win95-title-bar {
+    display: none; /* hidden by default */
+}
+body[class*="theme-"] .win95-title-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(90deg, var(--win95-title-bg), var(--win95-accent));
+    color: var(--win95-title-text);
+    padding: 3px 6px;
+    width: 100%;
+    margin-bottom: 4px;
+    user-select: none;
+}
+.win95-title-bar-text {
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.win95-title-bar-controls {
+    display: flex;
+    gap: 2px;
+}
+.win95-title-btn {
+    background: var(--win95-face);
+    color: var(--win95-text);
+    border: 1.5px solid;
+    border-top-color: var(--win95-light);
+    border-left-color: var(--win95-light);
+    border-right-color: var(--win95-dark);
+    border-bottom-color: var(--win95-dark);
+    font-family: inherit;
+    font-size: 8px;
+    font-weight: bold;
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+}
+.win95-title-btn:active {
+    border-top-color: var(--win95-dark);
+    border-left-color: var(--win95-dark);
+    border-right-color: var(--win95-light);
+    border-bottom-color: var(--win95-light);
+}
+
+/* Classic Menu Bar */
+.win95-menu-bar {
+    display: none;
+}
+body[class*="theme-"] .win95-menu-bar {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    border-bottom: 2px solid var(--win95-dark);
+    padding: 4px 6px;
+    margin-bottom: 12px;
+    font-size: 9px;
+    gap: 12px;
+    background-color: var(--win95-face);
+}
+.win95-menu-item {
+    cursor: pointer;
+    padding: 2px 4px;
+}
+.win95-menu-item:hover {
+    background-color: var(--win95-title-bg);
+    color: var(--win95-title-text);
+}
+
+/* Desktop App Client Area */
+.win95-client {
+    padding: 10px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Classic Fieldset Groupbox */
+body[class*="theme-"] .win95-groupbox {
+    border: 2px solid;
+    border-top-color: var(--win95-dark);
+    border-left-color: var(--win95-dark);
+    border-right-color: var(--win95-light);
+    border-bottom-color: var(--win95-light);
+    box-shadow: inset 1px 1px 0px var(--win95-shadow);
+    padding: 12px;
+    margin: 4px;
+    background: transparent;
+    color: var(--win95-text);
+}
+body[class*="theme-"] .win95-groupbox legend {
+    font-size: 8px;
+    font-weight: bold;
+    padding: 0 6px;
+    color: var(--win95-text);
+}
+
+/* Buttons 3D style */
+body[class*="theme-"] .btn-weapon,
+body[class*="theme-"] .btn-control,
+body[class*="theme-"] .btn-fire,
+body[class*="theme-"] .win95-btn {
+    background-color: var(--win95-face);
+    color: var(--win95-text);
+    border: 2px solid;
+    border-top-color: var(--win95-light);
+    border-left-color: var(--win95-light);
+    border-right-color: var(--win95-dark);
+    border-bottom-color: var(--win95-dark);
+    box-shadow: none;
+    text-shadow: none;
+    font-family: inherit;
+    border-radius: 0;
+    transition: none;
+}
+
+body[class*="theme-"] .btn-weapon:hover:not(:disabled),
+body[class*="theme-"] .btn-control:hover:not(:disabled),
+body[class*="theme-"] .btn-fire:hover:not(:disabled) {
+    background-color: var(--win95-face);
+    border-color: var(--win95-light) var(--win95-dark) var(--win95-dark) var(--win95-light);
+}
+
+body[class*="theme-"] .btn-weapon:active:not(:disabled),
+body[class*="theme-"] .btn-control:active:not(:disabled),
+body[class*="theme-"] .btn-fire:active:not(:disabled) {
+    border-top-color: var(--win95-dark);
+    border-left-color: var(--win95-dark);
+    border-right-color: var(--win95-light);
+    border-bottom-color: var(--win95-light);
+    transform: translate(1px, 1px);
+}
+
+/* Active Weapon selection (Dither grid style with #D4922A highlight) */
+body[class*="theme-"] .btn-weapon.active {
+    background-color: var(--win95-face);
+    background-image: radial-gradient(#D4922A 25%, transparent 25%),
+                      radial-gradient(#D4922A 25%, transparent 25%);
+    background-size: 4px 4px;
+    background-position: 0 0, 2px 2px;
+    color: #D4922A;
+    font-weight: bold;
+    border-top-color: var(--win95-dark);
+    border-left-color: var(--win95-dark);
+    border-right-color: #D4922A;
+    border-bottom-color: #D4922A;
+    transform: none;
+}
+
+/* Inset boxes (Progress bar container, displays) */
+body[class*="theme-"] .hp-bar-container {
+    background-color: var(--win95-input-bg);
+    border: 2px solid;
+    border-top-color: var(--win95-dark);
+    border-left-color: var(--win95-dark);
+    border-right-color: var(--win95-light);
+    border-bottom-color: var(--win95-light);
+    height: 14px;
+    padding: 1px;
+    box-sizing: border-box;
+}
+
+body[class*="theme-"] #player-hp-bar {
+    background-color: var(--win95-progress-player);
+}
+
+body[class*="theme-"] #cpu-hp-bar {
+    background-color: var(--win95-progress-cpu);
+}
+
+body[class*="theme-"] #player-shield-bar,
+body[class*="theme-"] #cpu-shield-bar {
+    background-color: var(--win95-progress-shield) !important;
+}
+
+/* Status well / Digital display panels */
+.win95-inset-well {
+    background-color: var(--win95-input-bg);
+    color: var(--win95-input-text);
+    border: 1.5px solid;
+    border-top-color: var(--win95-dark);
+    border-left-color: var(--win95-dark);
+    border-right-color: var(--win95-light);
+    border-bottom-color: var(--win95-light);
+    padding: 4px 8px;
+    font-size: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 60px;
+    text-align: center;
+}
+
+/* Canvas styling */
+body[class*="theme-"] canvas {
+    border: 3px solid;
+    border-top-color: var(--win95-dark);
+    border-left-color: var(--win95-dark);
+    border-right-color: var(--win95-light);
+    border-bottom-color: var(--win95-light);
+}
+
+/* Turn indicator blinking & styling */
+body[class*="theme-"] #turn-indicator {
+    color: var(--win95-text);
+    font-size: 10px;
+    font-weight: bold;
+    background-color: var(--win95-input-bg);
+    border: 1.5px solid;
+    border-top-color: var(--win95-dark);
+    border-left-color: var(--win95-dark);
+    border-right-color: var(--win95-light);
+    border-bottom-color: var(--win95-light);
+    padding: 6px 12px;
+    margin-bottom: 4px;
+}
+

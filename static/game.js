@@ -2536,4 +2536,29 @@ canvas.addEventListener('click', (e) => {
     }
 });
 
+// Windows 95 Theme Switcher Logic
+function applyTheme(theme) {
+    const classes = Array.from(document.body.classList).filter(c => c.startsWith('theme-'));
+    classes.forEach(c => document.body.classList.remove(c));
+    
+    // Correct for the legacy 'classic', 'dark', 'vapor' values
+    const fullThemeName = (theme === 'classic' || theme === 'dark' || theme === 'vapor') 
+        ? `win95-${theme}` 
+        : theme;
+    document.body.classList.add(`theme-${fullThemeName}`);
+}
+
+const themeSelect = document.getElementById('win95-theme-select');
+if (themeSelect) {
+    const savedTheme = localStorage.getItem('win95-theme') || 'classic';
+    themeSelect.value = savedTheme;
+    applyTheme(savedTheme);
+
+    themeSelect.addEventListener('change', (e) => {
+        const selected = e.target.value;
+        localStorage.setItem('win95-theme', selected);
+        applyTheme(selected);
+    });
+}
+
 initGame();
