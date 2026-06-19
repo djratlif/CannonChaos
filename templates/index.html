@@ -4,13 +4,59 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cannon Chaos (Build {{ build_version }})</title>
-    <!-- Use Google Fonts for 8-bit style -->
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <!-- Use Google Fonts for 8-bit style and readable alternatives -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;700&family=VT323&family=Silkscreen:wght@400;700&family=Inter:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 </head>
 <body class="theme-win95-dark">
     <div class="game-container">
+        <!-- Classic Windows 95 Title Bar -->
+        <div class="win95-title-bar">
+            <div class="win95-title-bar-text">
+                <img src="{{ url_for('static', filename='favicon.svg') }}" width="12" height="12" style="image-rendering: pixelated; vertical-align: middle;">
+                Cannon Chaos - System Configurator
+            </div>
+            <div class="win95-title-bar-controls">
+                <button class="win95-title-btn">?</button>
+                <button class="win95-title-btn">_</button>
+                <button class="win95-title-btn" onclick="window.close()">X</button>
+            </div>
+        </div>
+
+        <!-- Classic Windows 95 Menu Bar with Theme and Font Selectors -->
+        <div class="win95-menu-bar">
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-weight: bold;">Theme:</span>
+                <select id="win95-theme-select" style="font-family: inherit; font-size: 11px; background: var(--win95-input-bg); color: var(--win95-input-text); border: 1px solid var(--win95-dark); padding: 1px 3px;">
+                    <option value="classic">Windows 95 Classic</option>
+                    <option value="dark" selected>Windows 95 Dark</option>
+                    <option value="vapor">Vaporwave 95</option>
+                    <option value="arcade-neon">8-Bit Neon Arcade</option>
+                    <option value="msdos">MS-DOS Terminal</option>
+                    <option value="gameboy">Game Boy DMG</option>
+                    <option value="nes">NES Classic</option>
+                    <option value="cyberpunk">Cyberpunk Neon</option>
+                    <option value="amiga">Amiga Workbench</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-weight: bold; margin-left: 10px;">UI Font:</span>
+                <select id="win95-font-select" style="font-family: inherit; font-size: 11px; background: var(--win95-input-bg); color: var(--win95-input-text); border: 1px solid var(--win95-dark); padding: 1px 3px;">
+                    <option value="pixel-classic">Retro Arcade (Press Start 2P)</option>
+                    <option value="desktop-classic">Classic Desktop (Tahoma / Geneva)</option>
+                    <option value="terminal-mono">Terminal Monospace (Courier New)</option>
+                    <option value="pixel-readable">Readable Pixel (Pixelify Sans)</option>
+                    <option value="crt-mono">CRT Monospace (VT323)</option>
+                    <option value="micro-pixel">Micro Pixel (Silkscreen)</option>
+                    <option value="sleek-sans" selected>Sleek Sans-Serif (Inter)</option>
+                    <option value="dev-console">Developer Console (JetBrains Mono)</option>
+                    <option value="future-tech">Futuristic Tech (Share Tech Mono)</option>
+                </select>
+            </div>
+        </div>
+
         <!-- Header containing Player HUD, Centered Title, and CPU HUD -->
         <header style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 15px 10px 0 10px; width: 100%; box-sizing: border-box; gap: 15px;">
             <!-- Player 1 HUD -->
@@ -19,15 +65,15 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
                     <div style="flex: 1;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                            <span style="font-size: 8px;">HP:</span>
+                            <span>HP:</span>
                             <span id="player-hp" class="win95-inset-well">100</span>
                         </div>
                         <div class="hp-bar-container"><div class="hp-bar" id="player-hp-bar"></div></div>
                     </div>
                     <div style="flex: 1;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                            <span style="font-size: 8px;">Shield:</span>
-                            <span style="font-size: 8px;"><span id="player-shield">0</span>/50</span>
+                            <span>Shield:</span>
+                            <span><span id="player-shield">0</span>/50</span>
                         </div>
                         <div class="hp-bar-container"><div class="hp-bar" id="player-shield-bar" style="width: 0%;"></div></div>
                     </div>
@@ -59,15 +105,15 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
                     <div style="flex: 1;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                            <span style="font-size: 8px;">HP:</span>
+                            <span>HP:</span>
                             <span id="cpu-hp" class="win95-inset-well">100</span>
                         </div>
                         <div class="hp-bar-container"><div class="hp-bar" id="cpu-hp-bar"></div></div>
                     </div>
                     <div style="flex: 1;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                            <span style="font-size: 8px;">Shield:</span>
-                            <span style="font-size: 8px;"><span id="cpu-shield">0</span>/50</span>
+                            <span>Shield:</span>
+                            <span><span id="cpu-shield">0</span>/50</span>
                         </div>
                         <div class="hp-bar-container"><div class="hp-bar" id="cpu-shield-bar" style="width: 0%;"></div></div>
                     </div>
@@ -90,7 +136,7 @@
                                         <path d="M 3 18 A 9 9 0 0 1 21 18" fill="none" stroke="#888" stroke-width="2" />
                                         <line id="angle-needle" x1="12" y1="18" x2="18.36" y2="11.64" stroke="#D4922A" stroke-width="2.5" stroke-linecap="round" />
                                     </svg>
-                                    <span style="font-size: 8px;">Angle:</span>
+                                    <span>Angle:</span>
                                 </div>
                                 <span id="angle-display" class="win95-inset-well" style="min-width: 42px;">45</span>
                             </div>
@@ -104,7 +150,7 @@
                                         <!-- Dynamic fill -->
                                         <rect id="power-fill" x="2" y="5" width="0" height="6" rx="2" fill="#4ade80" />
                                     </svg>
-                                    <span style="font-size: 8px;">Power:</span>
+                                    <span>Power:</span>
                                 </div>
                                 <span id="power-display" class="win95-inset-well" style="min-width: 42px;">0</span>
                             </div>
@@ -114,7 +160,7 @@
                     <fieldset class="win95-groupbox weapon-selector" style="flex: 1 1 auto; display: flex; flex-direction: row; gap: 16px; align-items: center; justify-content: space-between; margin: 0; padding: 12px; box-sizing: border-box;">
                         <legend>Armory / Defenses</legend>
                         <div class="weapon-section" style="display: flex; flex-direction: row; align-items: center; gap: 8px;">
-                            <p style="font-size: 8px; color: var(--win95-text); text-transform: uppercase; font-weight: bold; margin: 0; white-space: nowrap;">Cannons:</p>
+                            <p style="color: var(--win95-text); text-transform: uppercase; font-weight: bold; margin: 0; white-space: nowrap;">Cannons:</p>
                             <div class="weapon-grid" style="display: flex; flex-direction: row; gap: 4px; flex-wrap: wrap;">
                                 <button id="weapon-standard" class="btn-weapon active">Standard (∞)</button>
                                 <button id="weapon-medium" class="btn-weapon">Medium (2)</button>
@@ -125,7 +171,7 @@
                             </div>
                         </div>
                         <div class="weapon-section" style="display: flex; flex-direction: row; align-items: center; gap: 8px; border-left: 2px solid var(--win95-dark); padding-left: 12px;">
-                            <p style="font-size: 8px; color: var(--win95-text); text-transform: uppercase; font-weight: bold; margin: 0; white-space: nowrap;">Shields:</p>
+                            <p style="color: var(--win95-text); text-transform: uppercase; font-weight: bold; margin: 0; white-space: nowrap;">Shields:</p>
                             <div class="weapon-grid" style="display: flex; flex-direction: row; gap: 4px;">
                                 <button id="weapon-bubble" class="btn-weapon">Bubble (1)</button>
                             </div>
