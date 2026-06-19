@@ -1602,10 +1602,10 @@ function updateHUD() {
         const powerFill = document.getElementById('power-fill');
         if (powerFill) {
             const pct = Math.floor((player.power / player.maxPower) * 100);
-            const height = (pct / 100) * 20;
-            const y = 22 - height;
-            powerFill.setAttribute('y', y);
-            powerFill.setAttribute('height', height);
+            const width = (pct / 100) * 20;
+            powerFill.setAttribute('width', width);
+            powerFill.setAttribute('y', 5);
+            powerFill.setAttribute('height', 6);
             if (pct < 40) {
                 powerFill.setAttribute('fill', '#4ade80');
             } else if (pct < 75) {
@@ -1625,8 +1625,7 @@ function updateHUD() {
         }
         const powerFill = document.getElementById('power-fill');
         if (powerFill) {
-            powerFill.setAttribute('height', 0);
-            powerFill.setAttribute('y', 22);
+            powerFill.setAttribute('width', 0);
         }
     }
     // Update Weapon Selector Button States
